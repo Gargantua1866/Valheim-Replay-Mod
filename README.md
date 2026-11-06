@@ -1,6 +1,6 @@
 # Replay Mod
 
-Replay Mod records everything that happens around you in Valheim. Open the recording after in a separate replay world, fly a free camera through it, build camera paths and export the result as an MP4.
+Replay Mod records everything that happens around you in Valheim. Open the recording afterward in a separate replay world, fly a free camera through it, build camera paths and export the result as an MP4.
 
 ## Features
 
@@ -13,7 +13,7 @@ Replay Mod records everything that happens around you in Valheim. Open the recor
 
 ## Installation
 
-Install Replay Mod with a mod manager such as Gale. To install manually, put `ReplayMod.dll` in `BepInEx/plugins/ReplayMod/`.
+Install Replay Mod with a mod manager such as Gale, which also installs BepInEx. To install manually, put `ReplayMod.dll` in `BepInEx/plugins/ReplayMod/`.
 
 Video export requires FFmpeg, which Replay Mod doesn't include. See [Export](#export).
 
@@ -21,7 +21,7 @@ Video export requires FFmpeg, which Replay Mod doesn't include. See [Export](#ex
 
 In game, press **Ctrl+F12** to start/stop recording.
 
-**Replay Buffer:** Enable it in the Replays tab or with **Ctrl+Alt+F12** in game. **Ctrl+Shift+F12** then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as much resources as a normal recording does.
+**Replay Buffer:** Enable it in the Replays tab or with **Ctrl+Alt+F12** in game. **Ctrl+Shift+F12** then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does.
 
 A recording holds:
 
@@ -36,7 +36,7 @@ Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\repl
 
 1. On the main menu, pick a character and press Start.
 2. Open the **Replays** tab, pick a replay and press **Play**. The panel beside the list shows the replay's thumbnail and lets you rename or copy it.
-3. The replay opens in a temporary world built from the recorded world's seed. Everything still loads while paused. Nothing is saved to that world or to your character.
+3. The replay opens paused, in a temporary world built from the recorded world's seed. Everything still loads while paused. Nothing is saved to that world or to your character.
 4. To leave, use **Escape → Logout** or **Exit replay** in the Tab menu. The Tab menu can also leave without saving, which puts camera keys and bookmarks back to how they were when the replay opened.
 
 ### Keys

@@ -21,7 +21,7 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force (Join-Path $stage "plugins") | Out-Null
 Copy-Item $dll (Join-Path $stage "plugins")
 Copy-Item (Join-Path $PSScriptRoot "package\icon.png") $stage
-Copy-Item (Join-Path $PSScriptRoot "package\README.md") $stage
+Copy-Item (Join-Path $root "README.md") $stage
 [ordered]@{
     name           = "Replay_Mod"
     version_number = $version

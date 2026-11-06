@@ -1,10 +1,10 @@
 # Replay Mod
 
-Replay Mod records what happens around you in Valheim. You open the recording later in a separate replay world, fly a free camera through it, build camera paths and export the result as an MP4.
+Replay Mod records everything that happens around you in Valheim. Open the recording after in a separate replay world, fly a free camera through it, build camera paths and export the result as an MP4.
 
 ## Features
 
-- Record in single player, as host or as client, by hand or with a Replay Buffer that saves the last 2 minutes on a key press.
+- Record in single player, as host or as client, by hand or with a Replay Buffer that saves the last few minutes on a key press.
 - Fly a free camera with FOV and roll, or follow, mount, orbit or look at any character, vehicle or projectile.
 - Build camera paths from keys, with easing, per-key FOV, roll, replay speed, time of day and weather.
 - Change the replay's speed, time of day, weather, wind, depth of field and picture settings.
@@ -13,15 +13,15 @@ Replay Mod records what happens around you in Valheim. You open the recording la
 
 ## Installation
 
-Install Replay Mod with a mod manager such as Gale, which also installs BepInEx. To install by hand, put `ReplayMod.dll` in `BepInEx/plugins/ReplayMod/`.
+Install Replay Mod with a mod manager such as Gale. To install manually, put `ReplayMod.dll` in `BepInEx/plugins/ReplayMod/`.
 
-Video export also needs FFmpeg, which Replay Mod doesn't include. See [Export](#export).
+Video export requires FFmpeg, which Replay Mod doesn't include. See [Export](#export).
 
 ## Recording
 
-In game, press **Ctrl+F12** to start recording and press it again to stop.
+In game, press **Ctrl+F12** to start/stop recording.
 
-**Replay Buffer:** turn it on in the Replays tab or with **Ctrl+Alt+F12** in the game. **Ctrl+Shift+F12** then saves the last 2 minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as much as a normal recording does.
+**Replay Buffer:** Enable it in the Replays tab or with **Ctrl+Alt+F12** in game. **Ctrl+Shift+F12** then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as much resources as a normal recording does.
 
 A recording holds:
 
@@ -35,8 +35,8 @@ Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\repl
 ## Watching a replay
 
 1. On the main menu, pick a character and press Start.
-2. Open the **Replays** tab next to Start Game and Join Game, pick a replay and press **Play**. The panel beside the list shows the replay's picture and lets you rename or copy it.
-3. The replay opens paused, in a temporary world built from the recorded world's seed. Everything still loads while paused. Nothing is saved to that world or to your character.
+2. Open the **Replays** tab, pick a replay and press **Play**. The panel beside the list shows the replay's thumbnail and lets you rename or copy it.
+3. The replay opens in a temporary world built from the recorded world's seed. Everything still loads while paused. Nothing is saved to that world or to your character.
 4. To leave, use **Escape → Logout** or **Exit replay** in the Tab menu. The Tab menu can also leave without saving, which puts camera keys and bookmarks back to how they were when the replay opened.
 
 ### Keys
@@ -118,11 +118,11 @@ Recordings mark deaths, kills, bosses (seen and defeated) and teleports as color
 
 ### Targets
 
-You can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them. Pause first to catch a fast one.
+You can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key.
 
 ### Trim
 
-In the Tab menu, select a section (or mark a start and an end) and save that part as a new, shorter replay. Camera keys in it go along.
+In the Tab menu, select a section (or mark a start and an end) and save that part as a new, shorter replay. Camera keys in it are included.
 
 ### Screenshots
 

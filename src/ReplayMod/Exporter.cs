@@ -199,7 +199,7 @@ namespace ReplayMod
             if (Busy)
             {
                 _cancel = true;
-                return "Cancelling export...";
+                return "Canceling export...";
             }
             if (FindFfmpeg() == null) return NeedFfmpeg;
             if (!RangeFor(Range, out float start, out float end))
@@ -326,7 +326,7 @@ namespace ReplayMod
 
             Busy = false;
             string where = File.Exists(final) ? final : videoOnly;
-            Status = _cancel ? "Export cancelled" : error != null ? $"Export failed: {error}" : $"Exported {frames} frames to {where}";
+            Status = _cancel ? "Export canceled" : error != null ? $"Export failed: {error}" : $"Exported {frames} frames to {where}";
             if (error != null) Plugin.Log.LogError(Status);
             else Plugin.Log.LogInfo(Status);
             ReplayUI.Notify(Status);

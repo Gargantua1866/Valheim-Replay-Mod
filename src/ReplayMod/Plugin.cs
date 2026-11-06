@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.0.23";
+        public const string Version = "0.0.24";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;
@@ -56,11 +56,11 @@ namespace ReplayMod
             ExportOpen = Config.Bind("Export", "ShowInExplorer", false, "Show the finished video in File Explorer.");
             SampleRate = Config.Bind("Recording", "SampleRate", 20f, "Object samples per second (vanilla network rate is 20).");
             // New key name: the old DynamicRadius (80) would otherwise stay in existing config files.
-            DynamicRadius = Config.Bind("Recording", "MovingObjectRadius", 0f, "Players, creatures, ships and projectiles within this many metres are recorded. 0 = everything the game has loaded around you (follows your simulation distance).");
+            DynamicRadius = Config.Bind("Recording", "MovingObjectRadius", 0f, "Players, creatures, ships and projectiles within this many meters are recorded. 0 = everything the game has loaded around you (follows your simulation distance).");
             StaticZoneRing = Config.Bind("Recording", "StaticZoneRing", 1, "Scenery (trees, rocks, buildings) is recorded for whole 64 m zones within this many zones of you (1 = 3x3 zones).");
             KeyframeInterval = Config.Bind("Recording", "KeyframeInterval", 5f, "Seconds between full snapshots of moving objects.");
             RecordHiFi = Config.Bind("Recording", "RecordHiFi", true, "Also record nearby characters' positions every physics step (50 Hz) for smooth slow motion.");
-            HiFiRadius = Config.Bind("Recording", "HiFiRadius", 30f, "Characters within this many metres get the 50 Hz recording.");
+            HiFiRadius = Config.Bind("Recording", "HiFiRadius", 30f, "Characters within this many meters get the 50 Hz recording.");
             RecordPose = Config.Bind("Recording", "RecordPose", true, "Record your own character's final bone pose, so animation mods (and anything else that moves bones) replay exactly as you saw them.");
             PoseRate = Config.Bind("Recording", "PoseRate", 30f, "Pose samples per second.");
             ExtraRpcs = Config.Bind("Playback", "ExtraRpcs", "", "More recorded RPC names to replay, comma-separated, on top of the built-in visual-only list.");

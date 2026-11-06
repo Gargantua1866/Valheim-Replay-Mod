@@ -88,7 +88,7 @@ namespace ReplayMod
             Roll = Mathf.DeltaAngle(0f, e.z);
         }
 
-        // Attaches to the recorded object under the screen centre, or detaches if already attached.
+        // Attaches to the recorded object under the screen center, or detaches if already attached.
         public static string ToggleAttach(AttachMode mode, Camera cam)
         {
             if (Attach != AttachMode.None)
@@ -97,7 +97,7 @@ namespace ReplayMod
                 return "Camera detached";
             }
             ZNetView nv = AimedObject(cam);
-            return nv ? AttachTo(nv, mode) : "Aim at a recorded object first (screen centre)";
+            return nv ? AttachTo(nv, mode) : "Aim at a recorded object first (screen center)";
         }
 
         public static string AttachTo(ZNetView nv, AttachMode mode)
@@ -124,7 +124,7 @@ namespace ReplayMod
             return c ? c.GetHoverName() : Utils.GetPrefabName(nv.gameObject);
         }
 
-        // The object the camera is attached to, or else the one at the screen centre.
+        // The object the camera is attached to, or else the one at the screen center.
         public static ZNetView TargetOrAimed(Camera cam) => Attach != AttachMode.None && TargetView() ? TargetView() : AimedObject(cam);
 
         public static string ModeName(AttachMode m) => m == AttachMode.Follow ? "Following" : m == AttachMode.Mount ? "Mounted on" : m == AttachMode.Orbit ? "Orbiting" : "Eyes of";
@@ -138,7 +138,7 @@ namespace ReplayMod
                 return "Stopped looking at target";
             }
             ZNetView nv = AimedObject(cam);
-            if (!nv) return "Aim at a recorded object first (screen centre)";
+            if (!nv) return "Aim at a recorded object first (screen center)";
             ZDOID id = nv.GetZDO().m_uid;
             _lookTarget = new RecId(id.UserID, id.ID);
             _lookLabel = NameOf(nv);
@@ -166,7 +166,7 @@ namespace ReplayMod
         }
 
         // Depth of field through the game's own effect. Auto focus uses the look-at target, or what's
-        // at the screen centre. In a replay this switch alone decides, whatever the game's graphics
+        // at the screen center. In a replay this switch alone decides, whatever the game's graphics
         // setting says: leaving that on is what kept the blur on with the switch off. The next scene's
         // CameraEffects reads the graphics setting again, so nothing needs putting back.
         private static void ApplyDof(Camera cam, float dt)
@@ -253,7 +253,7 @@ namespace ReplayMod
         }
 
         // Projectiles fly without colliders, so a ray can't hit them, and they're small and quick: the
-        // one nearest the aim line counts, within half a metre or about 4 degrees.
+        // one nearest the aim line counts, within half a meter or about 4 degrees.
         private static ZNetView AimedProjectile(Ray ray)
         {
             ZNetView best = null;

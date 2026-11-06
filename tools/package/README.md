@@ -67,11 +67,11 @@ These keys work inside a replay and can't be changed.
 | P | Follow the camera path on/off |
 | V | Show the path line on/off (never shown while following) |
 | N | Record a take at the current speed: fly by hand while the replay plays, and N again turns it into camera keys |
-| J | Follow the character or vehicle at the screen centre, keeping your offset, and look around freely. J again detaches |
+| J | Follow the character or vehicle at the screen center, keeping your offset, and look around freely. J again detaches |
 | Shift+J | Mount on it rigidly, so the offset and angle turn with it (for example under a ship's hull) |
-| B | Orbit the object at the screen centre. B again stops |
-| L | Keep the view on the object at the screen centre, on a path too. L again stops |
-| U | Hide the object at the screen centre from the shot. Ctrl+Z or the menu brings it back |
+| B | Orbit the object at the screen center. B again stops |
+| L | Keep the view on the object at the screen center, on a path too. L again stops |
+| U | Hide the object at the screen center from the shot. Ctrl+Z or the menu brings it back |
 | 1-9 / Ctrl+1-9 | Jump to / save a camera bookmark (saved with the replay) |
 | O | Original camera (what the recorder saw) |
 | H | 50 Hz character motion on/off, to compare slow-motion smoothness |
@@ -93,9 +93,9 @@ To make a path, fly to a pose, move the timeline and press K. Repeat for each po
 - **Speed track:** each camera key has a replay speed (Tab menu, under the key's ease). While following the path, the replay speeds up and slows down between keys and the camera keeps its pace, so a slow-motion stretch doesn't slow the camera move.
 - **Time of day and weather:** a key can set either. Time blends to the next key that sets it, the short way around the clock. Weather changes at the key and stays. Both apply whether or not you follow the path, and they override the Time and weather section.
 - **In the world:** each key shows as a small numbered wireframe camera pointing where it looks. Its notch marks the top, so you can see roll. Keys and the path are drawn after depth of field and other effects, so they stay sharp, and they show through terrain.
-- **Path colours:** the path line runs from green (slowest) to red (fastest camera). The Tab menu shows the top speed in m/s.
+- **Path colors:** the path line runs from green (slowest) to red (fastest camera). The Tab menu shows the top speed in m/s.
 - **Takes in slow motion:** slow the replay down, press N and fly. You get more time to steer and just as much detail. The take keeps the speed you flew it at, and the whole path speed (↑/↓ while following, or the Tab menu) plays it at any other speed.
-- **Moving with an object:** *Path moves with target* in the Tab menu ties the path to the object the camera is attached to, or to the one at the screen centre. The keys then ride along with it. *Moves and turns with it* turns them with it too, for a camera path around a moving ship.
+- **Moving with an object:** *Path moves with target* in the Tab menu ties the path to the object the camera is attached to, or to the one at the screen center. The keys then ride along with it. *Moves and turns with it* turns them with it too, for a camera path around a moving ship.
 - **Saving:** Replay Mod saves keys and bookmarks automatically next to the replay as `<name>.camera.txt`.
 
 ### Tab menu
@@ -114,7 +114,7 @@ Type in the search box at the top to show only the sections that have what you'r
 
 A click seeks. Dragging from the playhead scrubs. Dragging anywhere else selects a section for Trim, and a right-click clears it.
 
-Recordings mark deaths, kills, bosses (seen and defeated) and teleports as coloured ticks on the timeline. Hover one, or a camera key, for details.
+Recordings mark deaths, kills, bosses (seen and defeated) and teleports as colored ticks on the timeline. Hover one, or a camera key, for details.
 
 ### Targets
 

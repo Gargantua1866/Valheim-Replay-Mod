@@ -12,7 +12,7 @@ using UnityEngine.UI;
 namespace ReplayMod
 {
     // A "Replays" tab next to Start Game and Join Game. Its button and page are clones of Valheim's own,
-    // so font, colours and frames match the game. The IMGUI window is the fallback if a game update
+    // so font, colors and frames match the game. The IMGUI window is the fallback if a game update
     // changes the menu so that the tab can't be built.
     internal static class MenuUI
     {
@@ -126,7 +126,7 @@ namespace ReplayMod
             return at.GetComponent<T>();
         }
 
-        // A button on the page, recognised by the FejdStartup method it calls.
+        // A button on the page, recognized by the FejdStartup method it calls.
         private static Button FindByHandler(Transform origPage, Transform clonePage, string method)
         {
             foreach (Button b in origPage.GetComponentsInChildren<Button>(true))

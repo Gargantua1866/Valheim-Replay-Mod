@@ -100,8 +100,8 @@ namespace ReplayMod
             if (ZInput.GetKeyDown(KeyCode.N, false)) ToggleTake();
             if (FreeCam.Take != null && ReplaySession.T >= ReplaySession.Duration) ToggleTake();
             // While playing, the key just passed is a moment behind the playhead: skip it, or [ seems to do nothing.
-            if (RepeatKey(KeyCode.LeftBracket, 0.2f)) ReplaySession.Seek(CameraPath.Neighbour(ReplaySession.T - (ReplaySession.Paused ? 0f : 0.5f), -1));
-            if (RepeatKey(KeyCode.RightBracket, 0.2f)) ReplaySession.Seek(CameraPath.Neighbour(ReplaySession.T, 1));
+            if (RepeatKey(KeyCode.LeftBracket, 0.2f)) ReplaySession.Seek(CameraPath.Neighbor(ReplaySession.T - (ReplaySession.Paused ? 0f : 0.5f), -1));
+            if (RepeatKey(KeyCode.RightBracket, 0.2f)) ReplaySession.Seek(CameraPath.Neighbor(ReplaySession.T, 1));
             if (ZInput.GetKeyDown(KeyCode.T, false)) ShowStatus = !ShowStatus;
             // Bookmarks: Ctrl+1..9 saves the camera pose, 1..9 jumps back to it.
             bool ctrl = ZInput.GetKey(KeyCode.LeftControl, false) || ZInput.GetKey(KeyCode.RightControl, false);
@@ -230,7 +230,7 @@ namespace ReplayMod
             ZNetView nv = FreeCam.AimedObject(ViewCamera);
             if (!nv)
             {
-                Toast("Aim at a recorded object first (screen centre)");
+                Toast("Aim at a recorded object first (screen center)");
                 return;
             }
             ZDOID id = nv.GetZDO().m_uid;
@@ -478,7 +478,7 @@ namespace ReplayMod
             Event e = Event.current;
             Vector2 mouse = e.mousePosition;
 
-            // Auto-markers sit in the track as coloured ticks; hovering one shows what happened.
+            // Auto-markers sit in the track as colored ticks; hovering one shows what happened.
             string tip = null;
             foreach (ReplayEvent mk in ReplaySession.Data.Markers)
             {
@@ -690,7 +690,7 @@ namespace ReplayMod
             public static bool RepeatButton(string text, params GUILayoutOption[] o) => GUILayout.RepeatButton(Highlight(text, _search), o);
         }
 
-        // Colours each searched word in the text, leaving rich text tags as they are.
+        // Colors each searched word in the text, leaving rich text tags as they are.
         internal static string Highlight(string text, string search)
         {
             if (string.IsNullOrEmpty(search)) return text;
@@ -890,7 +890,7 @@ namespace ReplayMod
             ZNetView nv = FreeCam.TargetOrAimed(ViewCamera);
             if (!nv)
             {
-                Toast("Aim at a recorded object first (screen centre)");
+                Toast("Aim at a recorded object first (screen center)");
                 return;
             }
             ZDOID id = nv.GetZDO().m_uid;
@@ -925,8 +925,8 @@ namespace ReplayMod
                 GUILayout.EndHorizontal();
             }
             GUILayout.BeginHorizontal();
-            HeldButton("< Prev key ([)", () => ReplaySession.Seek(CameraPath.Neighbour(ReplaySession.T, -1)), 0.2f);
-            HeldButton("Next key (]) >", () => ReplaySession.Seek(CameraPath.Neighbour(ReplaySession.T, 1)), 0.2f);
+            HeldButton("< Prev key ([)", () => ReplaySession.Seek(CameraPath.Neighbor(ReplaySession.T, -1)), 0.2f);
+            HeldButton("Next key (]) >", () => ReplaySession.Seek(CameraPath.Neighbor(ReplaySession.T, 1)), 0.2f);
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (Ui.Button("Select all keys"))
@@ -1088,7 +1088,7 @@ namespace ReplayMod
         private static void TargetSection()
         {
             Ui.Label(FreeCam.Attach == FreeCam.AttachMode.None
-                ? "Aim the screen centre at a character, vehicle or projectile (pause first to catch a fast one)."
+                ? "Aim the screen center at a character, vehicle or projectile (pause first to catch a fast one)."
                 : $"{FreeCam.ModeName(FreeCam.Attach)} {FreeCam.AttachName}. Fly to change the offset.");
             GUILayout.BeginHorizontal();
             if (FreeCam.Attach == FreeCam.AttachMode.None)
@@ -1214,7 +1214,7 @@ namespace ReplayMod
             GuideHidden = Ui.Toggle(GuideHidden, "Hide the guide (hold G)");
             FreeCam.DofOn = Ui.Toggle(FreeCam.DofOn, "Depth of field");
             if (!FreeCam.DofOn) return;
-            FreeCam.DofAuto = Ui.Toggle(FreeCam.DofAuto, "Auto focus (look-at target, or the screen centre)");
+            FreeCam.DofAuto = Ui.Toggle(FreeCam.DofAuto, "Auto focus (look-at target, or the screen center)");
             if (FreeCam.DofAuto) Ui.Label($"Focus: {FreeCam.DofDistance:0.0} m");
             else FreeCam.DofDistance = Slider("Focus (m)", FreeCam.DofDistance, 0.5f, 200f, "0.0", 10f);
             FreeCam.DofAperture = Slider("Blur", FreeCam.DofAperture, 0.05f, FreeCam.DofMaxAperture, "0.00", 0.5f);

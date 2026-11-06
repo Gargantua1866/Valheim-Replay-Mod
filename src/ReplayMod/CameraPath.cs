@@ -442,7 +442,7 @@ namespace ReplayMod
         }
 
         // Time of the next key after t (dir > 0) or before it (dir < 0), wrapping around at the ends.
-        public static float Neighbour(float t, int dir)
+        public static float Neighbor(float t, int dir)
         {
             float best = t;
             foreach (Key k in Keys)
@@ -483,7 +483,7 @@ namespace ReplayMod
         private static float[] Sample(float t)
         {
             int n = Keys.Count;
-            // Unwrap yaw so the camera turns the short way between neighbouring keys.
+            // Unwrap yaw so the camera turns the short way between neighboring keys.
             var p = new float[n][];
             float yaw = Keys[0].yaw, pitch = Keys[0].pitch;
             for (int i = 0; i < n; i++)
@@ -637,7 +637,7 @@ namespace ReplayMod
             Rate = 1f;
 
             // Previous and next key wrap around at the ends.
-            ok &= Neighbour(10f, 1) == 0f && Neighbour(0f, -1) == 10f && Neighbour(5f, 1) == 10f;
+            ok &= Neighbor(10f, 1) == 0f && Neighbor(0f, -1) == 10f && Neighbor(5f, 1) == 10f;
 
             // A pose relative to an anchor comes back as the same pose in the world.
             Quaternion turned = Quaternion.Euler(20f, 130f, -35f);
@@ -688,7 +688,7 @@ namespace ReplayMod
         }
 
         // World-space preview of the path, rebuilt when keys change. One line per segment, because a line
-        // renderer's gradient holds only 8 colours. Green is the slowest camera, red the fastest.
+        // renderer's gradient holds only 8 colors. Green is the slowest camera, red the fastest.
         private static readonly List<LineRenderer> _lines = new List<LineRenderer>();
         private static Material _lineMaterial;
         private static GameObject _lineRoot;
@@ -773,7 +773,7 @@ namespace ReplayMod
 
         // A hand-flown take: pose samples become as few keys as can reproduce them within tolerance
         // (Ramer-Douglas-Peucker over position, angles and FOV). Replaces the keys it covers.
-        public const float TakeTolerance = 0.15f; // metres; one degree counts as 5 cm
+        public const float TakeTolerance = 0.15f; // meters; one degree counts as 5 cm
 
         public static int AddTake(List<Key> samples)
         {

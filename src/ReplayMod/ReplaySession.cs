@@ -259,6 +259,7 @@ namespace ReplayMod
             if (!Active || !Ready) return;
             Player p = Player.m_localPlayer;
             if (p == null || ZDOMan.instance == null) return;
+            KeepClothHook();
             if (Time.unscaledTime >= _nextHide)
             {
                 _nextHide = Time.unscaledTime + 1f; // equipment gets new renderers
@@ -486,6 +487,15 @@ namespace ReplayMod
             bool ok = BasketAt(events, 0.5f, 0.5f) == null && BasketAt(events, 1f, 0.5f) == "a" && BasketAt(events, 2.4f, 0.5f) == "a"
                 && BasketAt(events, 2.5f, 0.5f) == null && BasketAt(events, 6f, 0.5f) == "b";
             if (!ok) Plugin.Log.LogError("catapult basket self-check FAILED");
+            // Steady speed sampled unevenly stays on the line; a start from rest and the clock's daily wrap hold.
+            Vector3 onLine = CurveThrough(Vector3.zero, 0f, Vector3.right * 3f, 0.1f, Vector3.right * 4.5f, 0.15f, Vector3.right * 9f, 0.3f, 0.5f);
+            Vector3 fromRest = CurveThrough(Vector3.zero, 1f, Vector3.zero, 1f, Vector3.right, 2f, Vector3.right, 2f, 0.5f);
+            var clock = new List<ReplayEvent> { new ReplayEvent { T = 1f, F = 86399.5f }, new ReplayEvent { T = 2f, F = 0.5f }, new ReplayEvent { T = 3f, F = 1.5f } };
+            if ((onLine - Vector3.right * 3.75f).magnitude > 1e-3f || (fromRest - Vector3.right * 0.5f).magnitude > 1e-3f
+                || !Mathf.Approximately(WaterTimeAt(clock, 2.5f), 1f) || !Mathf.Approximately(WaterTimeAt(clock, 4f), 2.5f) || !Mathf.Approximately(WaterTimeAt(clock, 0f), 86398.5f))
+            {
+                Plugin.Log.LogError("motion curve or wave clock self-check FAILED");
+            }
         }
         private static int _seekFrame = -100;
         public static bool SnapBars => Active && Ready && (Paused || Time.frameCount - _seekFrame < 5);
@@ -863,8 +873,41 @@ namespace ReplayMod
             return true;
         }
 
-        // 50 Hz lane: drive characters from Catmull-Rom through their recorded positions, after
-        // ZSyncTransform has moved them (postfix on MonoUpdaters.LateUpdate).
+        // The game's wave clock at the replay's time, so waves stand where they did under a recorded ship.
+        // Waves are computed from the world's clock, and the replay world's clock is another one.
+        internal static bool RecordedWaterTime(out float time)
+        {
+            time = 0f;
+            if (!Active || !Ready || Data.Waters.Count == 0) return false;
+            time = WaterTimeAt(Data.Waters, T);
+            return true;
+        }
+
+        internal static float WaterTimeAt(List<ReplayEvent> waters, float t)
+        {
+            int next = LowerBound(waters, t);
+            ReplayEvent a = waters[Mathf.Clamp(next - 1, 0, waters.Count - 1)], b = waters[Mathf.Min(next, waters.Count - 1)];
+            // At the daily wrap the two aren't comparable, and past either end there's only one.
+            return b.T > a.T && b.F >= a.F ? Mathf.Lerp(a.F, b.F, Mathf.Clamp01((t - a.T) / (b.T - a.T))) : a.F + t - a.T;
+        }
+
+        private static bool _clothHookFailed;
+
+        private static void KeepClothHook()
+        {
+            if (_clothHookFailed) return;
+            try { ReplayPatches.BeforeCloth.Keep(); }
+            catch (Exception e)
+            {
+                // The LateUpdate pass still poses the body; capes just follow the animator's pose.
+                _clothHookFailed = true;
+                Plugin.Log.LogWarning($"cloth hook failed: {e.Message}");
+            }
+        }
+
+        // High-rate lane: drive characters and other moving objects along a curve through their recorded
+        // positions, after ZSyncTransform has moved them (postfix on MonoUpdaters.LateUpdate), and before
+        // the cloth simulates (BeforeCloth).
         internal static void ApplyHiFi()
         {
             if (!Active || !Ready || !UseHiFi || Data.HiFi.Count == 0) return;
@@ -881,8 +924,11 @@ namespace ReplayMod
                 ReplayEvent p1 = s[i - 1], p2 = s[i];
                 if (p2.T - p1.T > 0.25f) continue; // a gap: the character left the lane
                 ReplayEvent p0 = s[Mathf.Max(i - 2, 0)], p3 = s[Mathf.Min(i + 1, s.Count - 1)];
+                // A neighbor across a gap says nothing about the speed here.
+                if (p1.T - p0.T > 0.25f) p0 = p1;
+                if (p3.T - p2.T > 0.25f) p3 = p2;
                 float u = Mathf.Clamp01((t - p1.T) / Mathf.Max(p2.T - p1.T, 1e-4f));
-                Vector3 pos = CatmullRom(p0.Pos, p1.Pos, p2.Pos, p3.Pos, u);
+                Vector3 pos = CurveThrough(p0.Pos, p0.T, p1.Pos, p1.T, p2.Pos, p2.T, p3.Pos, p3.T, u);
                 nv.transform.SetPositionAndRotation(pos, Quaternion.Slerp(p1.Rot, p2.Rot, u));
             }
         }
@@ -1051,10 +1097,13 @@ namespace ReplayMod
             return lo;
         }
 
-        private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float u)
+        // Hermite with Catmull-Rom tangents worked out from the real times: samples taken once a frame aren't evenly spaced.
+        internal static Vector3 CurveThrough(Vector3 p0, float t0, Vector3 p1, float t1, Vector3 p2, float t2, Vector3 p3, float t3, float u)
         {
+            float dt = t2 - t1;
+            Vector3 m1 = (t2 > t0 ? (p2 - p0) / (t2 - t0) : Vector3.zero) * dt, m2 = (t3 > t1 ? (p3 - p1) / (t3 - t1) : Vector3.zero) * dt;
             float u2 = u * u, u3 = u2 * u;
-            return 0.5f * (2f * p1 + (p2 - p0) * u + (2f * p0 - 5f * p1 + 4f * p2 - p3) * u2 + (3f * p1 - p0 - 3f * p2 + p3) * u3);
+            return (2f * u3 - 3f * u2 + 1f) * p1 + (u3 - 2f * u2 + u) * m1 + (-2f * u3 + 3f * u2) * p2 + (u3 - u2) * m2;
         }
 
         public static int AliveCount => _alive.Count;

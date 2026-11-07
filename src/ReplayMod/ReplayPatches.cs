@@ -273,6 +273,45 @@ namespace ReplayMod
             }
         }
 
+        // Capes simulate just before the LateUpdate scripts, so they saw the animator's pose while the body
+        // was drawn in the recorded one. The two differ most in an emote, and the cape thrashed. Positions and
+        // the recorded pose go on first, ahead of the cloth; re-hooked every frame, others may reorder the list.
+        internal static class BeforeCloth
+        {
+            private static readonly MagicaCloth2.MagicaManager.UpdateMethod Pose = () =>
+            {
+                ReplaySession.ApplyHiFi();
+                ReplaySession.ApplyPose();
+            };
+            private static MagicaCloth2.MagicaManager.UpdateMethod _hooked;
+
+            internal static void Keep()
+            {
+                MagicaCloth2.MagicaManager.UpdateMethod now = MagicaCloth2.MagicaManager.beforeLateUpdateDelegate;
+                if (now != null && ReferenceEquals(now, _hooked)) return;
+                System.Delegate[] list = now?.GetInvocationList();
+                if (list == null || list.Length == 0 || !list[0].Equals(Pose))
+                {
+                    var rest = (MagicaCloth2.MagicaManager.UpdateMethod)System.Delegate.Remove(now, Pose);
+                    MagicaCloth2.MagicaManager.beforeLateUpdateDelegate = (MagicaCloth2.MagicaManager.UpdateMethod)System.Delegate.Combine(Pose, rest);
+                }
+                _hooked = MagicaCloth2.MagicaManager.beforeLateUpdateDelegate;
+            }
+        }
+
+        // The wave clock comes from the recording (see RecordedWaterTime). The game's own smoothing would
+        // lag after a seek and doesn't follow pause or slow motion.
+        [HarmonyPatch(typeof(WaterVolume), "UpdateWaterTime")]
+        private static class RecordedWaves
+        {
+            private static bool Prefix(ref float ___s_wrappedDayTimeSeconds, ref float ___s_waterTime)
+            {
+                if (!ReplaySession.RecordedWaterTime(out float time)) return true;
+                ___s_wrappedDayTimeSeconds = ___s_waterTime = time;
+                return false;
+            }
+        }
+
         [HarmonyPatch(typeof(GameCamera), "LateUpdate")]
         private static class ReplayCamera
         {

@@ -9,8 +9,8 @@ using UnityEngine;
 namespace ReplayMod
 {
     // Records what this client has loaded: every ZNetScene instance whose ZDO changed (DataRevision),
-    // every routed RPC that reaches us, the game camera, the environment, and a 50 Hz lane for
-    // nearby characters. Works the same as host, client or single player because it reads ZDOMan,
+    // every routed RPC that reaches us, the game camera, the environment, and a high-rate lane for
+    // nearby characters and everything else that moves. Works the same as host, client or single player because it reads ZDOMan,
     // not the network.
     internal static class Recorder
     {
@@ -63,7 +63,7 @@ namespace ReplayMod
                 if (Buffering) Stop();
                 Start();
             }
-            // Ctrl is also the crouch key, and it toggled crouch just before F12 arrived.
+            // Ctrl is also the crouch key, and it toggled crouch just before the record key arrived.
             if (Player.m_localPlayer) SetCrouch.Invoke(Player.m_localPlayer, new object[] { false });
         }
 
@@ -110,7 +110,7 @@ namespace ReplayMod
             Player p = Player.m_localPlayer;
             if (!Buffering)
             {
-                p?.Message(MessageHud.MessageType.TopLeft, Active ? "Replay Mod: already recording" : "Replay Mod: Replay Buffer is off (Ctrl+Alt+F12 turns it on)");
+                p?.Message(MessageHud.MessageType.TopLeft, Active ? "Replay Mod: already recording" : "Replay Mod: Replay Buffer is off (Ctrl+Alt+F10 turns it on)");
                 return;
             }
             string current = _w.Path;
@@ -168,6 +168,7 @@ namespace ReplayMod
                 return;
             }
             _tracked.Clear();
+            _movers.Clear();
             _dynamic.Clear();
             _bossesSeen.Clear();
             _maxStamina = _maxEitr = -1f;
@@ -269,6 +270,7 @@ namespace ReplayMod
                 _w.Env(t, EnvMan.instance.GetDayFraction(), EnvMan.instance.GetCurrentEnvironment()?.m_name);
                 Vector3 wind = EnvMan.instance.GetWindDir();
                 _w.Wind(t, Mathf.Atan2(wind.x, wind.z) * Mathf.Rad2Deg, EnvMan.instance.GetWindIntensity());
+                _w.Water(t, ZNet.instance.GetWrappedDayTimeSeconds());
             }
             if (t >= _nextStats)
             {
@@ -306,6 +308,10 @@ namespace ReplayMod
                     Character boss = dyn ? nv.GetComponent<Character>() : null;
                     if (boss && boss.IsBoss() && _bossesSeen.Add(id)) Mark(MarkerKind.Boss, pos, $"Boss: {Localization.instance.Localize(boss.m_name)}");
                     WriteZdo(t, z, dyn ? ZdoFlags.Dynamic : ZdoFlags.None);
+                    if (dyn && nv.GetComponent<ZSyncTransform>() && !nv.GetComponent<Character>() && !nv.GetComponent<Projectile>())
+                    {
+                        _movers[id] = new Mover { View = nv, Body = nv.GetComponent<Rigidbody>(), Time = -1f };
+                    }
                 }
                 else if (tr.Rev != z.DataRevision || (dyn && keyframe))
                 {
@@ -324,6 +330,7 @@ namespace ReplayMod
             {
                 Tracked tr = _tracked[id];
                 _tracked.Remove(id);
+                _movers.Remove(id);
                 // Moving things that leave the radius vanish in playback too. Scenery that drops out
                 // of the zone ring stays as it was; only scenery destroyed inside the ring is removed.
                 if (tr.Dynamic || InRing(tr.Zone, pz, ring)) _w.Remove(t, id);
@@ -357,14 +364,65 @@ namespace ReplayMod
         {
             if (!Active || !Plugin.RecordHiFi.Value || Player.m_localPlayer == null) return;
             float t = Now;
-            Vector3 center = Player.m_localPlayer.transform.position;
+            Player me = Player.m_localPlayer;
+            Vector3 center = me.transform.position;
             float r2 = Plugin.HiFiRadius.Value * Plugin.HiFiRadius.Value;
+            SampleMovers(t, true);
             foreach (Character c in Character.GetAllCharacters())
             {
                 if (!c || (c.transform.position - center).sqrMagnitude > r2) continue;
+                if (c == me && _seatedOn != null) continue; // written with the vehicle
                 ZDO z = c.GetComponent<ZNetView>()?.GetZDO();
                 if (z == null || !_tracked.ContainsKey(z.m_uid)) continue;
                 _w.HiFi(t, z.m_uid, c.transform.position, c.transform.rotation);
+            }
+        }
+
+        // High-rate lane for moving objects that aren't characters, whose ZDO records come only 20 times a
+        // second. A body this machine simulates is exact at each physics step. Anything else moves once a
+        // frame (a remote owner's object follows ZSyncTransform), so it's read as it was drawn.
+        private class Mover
+        {
+            public ZNetView View;
+            public Rigidbody Body;
+            public Vector3 Pos;
+            public Quaternion Rot;
+            public float Time;
+        }
+
+        private const float MoverMinStep = 1f / 60f;
+        private static readonly Dictionary<ZDOID, Mover> _movers = new Dictionary<ZDOID, Mover>();
+        private static ZNetView _seatedOn;
+
+        private static void SampleMovers(float t, bool physicsStep)
+        {
+            Player me = Player.m_localPlayer;
+            if (me == null) return;
+            // The game moves a seated player onto the seat in the physics step, so what it reads then is
+            // already behind the vehicle. The seat's place on the vehicle, written with it, can't drift.
+            Transform seat = me.IsAttached() ? AttachPoint(me) : null;
+            ZNetView seatView = seat ? seat.GetComponentInParent<ZNetView>() : null;
+            ZDO meZdo = me.GetComponent<ZNetView>()?.GetZDO();
+            _seatedOn = null;
+            foreach (var kv in _movers)
+            {
+                Mover m = kv.Value;
+                if (!m.View) continue;
+                if (m.View == seatView) _seatedOn = seatView;
+                ZDO z = m.View.GetZDO();
+                if (z == null || physicsStep != (m.Body && z.IsOwner()) || t - m.Time < MoverMinStep) continue;
+                Transform tr = m.View.transform;
+                Vector3 pos = physicsStep ? m.Body.position : tr.position;
+                Quaternion rot = physicsStep ? m.Body.rotation : tr.rotation;
+                if (m.Time >= 0f && (pos - m.Pos).sqrMagnitude < 1e-4f && Quaternion.Angle(rot, m.Rot) < 0.1f) continue;
+                m.Pos = pos;
+                m.Rot = rot;
+                m.Time = t;
+                _w.HiFi(t, kv.Key, pos, rot);
+                if (m.View == seatView && meZdo != null && _tracked.ContainsKey(meZdo.m_uid))
+                {
+                    _w.HiFi(t, meZdo.m_uid, pos + rot * tr.InverseTransformPoint(seat.position), rot * (Quaternion.Inverse(tr.rotation) * seat.rotation));
+                }
             }
         }
 
@@ -378,11 +436,12 @@ namespace ReplayMod
 
         internal static void OnPreCull(Camera cam)
         {
-            if (!Active || !Plugin.RecordPose.Value || Time.frameCount == _poseFrame) return;
+            if (!Active || Time.frameCount == _poseFrame) return;
             if (!GameCamera.instance || cam != GameCamera.instance.GetComponent<Camera>()) return;
             _poseFrame = Time.frameCount;
             float t = Now;
-            if (t < _nextPose) return;
+            if (Plugin.RecordHiFi.Value) SampleMovers(t, false);
+            if (!Plugin.RecordPose.Value || t < _nextPose) return;
             _nextPose = t + 1f / Mathf.Max(1f, Plugin.PoseRate.Value);
             Player p = Player.m_localPlayer;
             VisEquipment vis = p ? p.GetComponent<VisEquipment>() : null;

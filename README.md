@@ -19,16 +19,16 @@ Video export requires FFmpeg, which Replay Mod doesn't include. See [Export](#ex
 
 ## Recording
 
-In game, press **Ctrl+F12** to start/stop recording.
+In game, press **Ctrl+F10** to start/stop recording.
 
-**Replay Buffer:** Enable it in the Replays tab or with **Ctrl+Alt+F12** in game. **Ctrl+Shift+F12** then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does.
+**Replay Buffer:** Enable it in the Replays tab or with **Ctrl+Alt+F10** in game. **Ctrl+Shift+F10** then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does.
 
 A recording holds:
 
 - players, creatures, ships and projectiles the game has loaded around you
 - scenery (trees, rocks, buildings, terrain edits) in the 3x3 zones around you
 - attacks and effects
-- your camera, the time of day, the weather and the wind
+- your camera, the time of day, the weather, the wind and the waves
 
 Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\replays`. Each `.replay` file has a `.json` next to it with size and timing statistics.
 
@@ -74,7 +74,7 @@ These keys work inside a replay and can't be changed.
 | U | Hide the object at the screen center from the shot. Ctrl+Z or the menu brings it back |
 | 1-9 / Ctrl+1-9 | Jump to / save a camera bookmark (saved with the replay) |
 | O | Original camera (what the recorder saw) |
-| H | 50 Hz character motion on/off, to compare slow-motion smoothness |
+| H | High-rate motion of characters, vehicles and other moving objects on/off, to compare smoothness |
 | G | Composition guides (thirds, golden, center, safe areas, 2.39:1, 9:16, horizon). Hold to hide or show the guide; it stays that way |
 | T | Hide or show the timeline and info |
 | F9 | Screenshot, without any Replay Mod overlay |

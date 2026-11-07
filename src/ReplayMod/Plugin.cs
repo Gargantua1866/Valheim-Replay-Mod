@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.0.26";
+        public const string Version = "0.0.27";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;
@@ -47,19 +47,20 @@ namespace ReplayMod
         {
             Log = Logger;
             MoveOldData();
-            RecordKey = Config.Bind("Recording", "RecordKey", new KeyboardShortcut(KeyCode.F12, KeyCode.LeftControl), "Start or stop recording.");
+            // New key names: the old ones hold Ctrl+F12, which Steam uses to record a clip, and would stay in existing config files.
+            RecordKey = Config.Bind("Recording", "RecordShortcut", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftControl), "Start or stop recording.");
             ReplayBuffer = Config.Bind("Recording", "ReplayBuffer", false, "Keep recording quietly while you play, so the save key can keep what just happened. Uses as much as a normal recording does.");
             ReplayBufferMinutes = Config.Bind("Recording", "ReplayBufferMinutes", 2f, new ConfigDescription("How many minutes the save key keeps.", new AcceptableValueRange<float>(0.5f, 30f)));
             ReplayBufferMinutes.SettingChanged += (s, e) => MenuUI.ListChanged();
-            ReplayBufferKey = Config.Bind("Recording", "ReplayBufferKey", new KeyboardShortcut(KeyCode.F12, KeyCode.LeftControl, KeyCode.LeftShift), "Save the last minutes as a replay.");
-            ReplayBufferToggleKey = Config.Bind("Recording", "ReplayBufferToggleKey", new KeyboardShortcut(KeyCode.F12, KeyCode.LeftControl, KeyCode.LeftAlt), "Turn the Replay Buffer on or off while in the game.");
+            ReplayBufferKey = Config.Bind("Recording", "ReplayBufferShortcut", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftControl, KeyCode.LeftShift), "Save the last minutes as a replay.");
+            ReplayBufferToggleKey = Config.Bind("Recording", "ReplayBufferToggleShortcut", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftControl, KeyCode.LeftAlt), "Turn the Replay Buffer on or off while in the game.");
             ExportOpen = Config.Bind("Export", "ShowInExplorer", false, "Show the finished video in File Explorer.");
             SampleRate = Config.Bind("Recording", "SampleRate", 20f, "Object samples per second (vanilla network rate is 20).");
             // New key name: the old DynamicRadius (80) would otherwise stay in existing config files.
             DynamicRadius = Config.Bind("Recording", "MovingObjectRadius", 0f, "Players, creatures, ships and projectiles within this many meters are recorded. 0 = everything the game has loaded around you (follows your simulation distance).");
             StaticZoneRing = Config.Bind("Recording", "StaticZoneRing", 1, "Scenery (trees, rocks, buildings) is recorded for whole 64 m zones within this many zones of you (1 = 3x3 zones).");
             KeyframeInterval = Config.Bind("Recording", "KeyframeInterval", 5f, "Seconds between full snapshots of moving objects.");
-            RecordHiFi = Config.Bind("Recording", "RecordHiFi", true, "Also record nearby characters' positions every physics step (50 Hz) for smooth slow motion.");
+            RecordHiFi = Config.Bind("Recording", "RecordHiFi", true, "Also record the positions of nearby characters, and of vehicles and other moving objects, at a high rate (at least 50 Hz) for smooth motion. Files grow when many things move.");
             HiFiRadius = Config.Bind("Recording", "HiFiRadius", 30f, "Characters within this many meters get the 50 Hz recording.");
             RecordPose = Config.Bind("Recording", "RecordPose", true, "Record your own character's final bone pose, so animation mods (and anything else that moves bones) replay exactly as you saw them.");
             PoseRate = Config.Bind("Recording", "PoseRate", 30f, "Pose samples per second.");

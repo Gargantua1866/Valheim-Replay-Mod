@@ -1297,7 +1297,7 @@ namespace ReplayMod
             if (Hud.instance) Hud.instance.m_userHidden = !Ui.Toggle(!Hud.instance.m_userHidden, "Show the normal game HUD (same as Ctrl+F3)");
             ShowStatus = Ui.Toggle(ShowStatus, "Timeline and status line (T)");
             ReplaySession.UsePose = Ui.Toggle(ReplaySession.UsePose, $"Exact pose for the recording player and their vehicle ({ReplaySession.Data.Poses.Count} + {ReplaySession.Data.Parts.Count} tracks)");
-            ReplaySession.UseHiFi = Ui.Toggle(ReplaySession.UseHiFi, $"50 Hz character motion (H) ({ReplaySession.Data.HiFi.Count} tracks)");
+            ReplaySession.UseHiFi = Ui.Toggle(ReplaySession.UseHiFi, $"High-rate motion (H) ({ReplaySession.Data.HiFi.Count} tracks)");
         }
 
         private static void ExportSection()

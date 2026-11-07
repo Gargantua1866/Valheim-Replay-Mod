@@ -9,7 +9,7 @@ namespace ReplayMod
     // File layout: a Deflate stream holding the header, then records in time order, then End.
     // Every ZDO record carries the object's full state (ZDO.Serialize plus position), so seeking is
     // "latest record at or before t" per object.
-    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, End = 255 }
+    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, End = 255 }
 
     // Timeline markers: things worth jumping to.
     internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill }
@@ -209,6 +209,13 @@ namespace ReplayMod
             Stats.OtherBytes += Commit();
         }
 
+        public void Water(float t, float waterTime)
+        {
+            var w = Begin(RecType.Water, t);
+            w.Write(waterTime);
+            Stats.OtherBytes += Commit();
+        }
+
         public void Marker(float t, MarkerKind kind, Vector3 pos, string text)
         {
             var w = Begin(RecType.Marker, t);
@@ -341,6 +348,7 @@ namespace ReplayMod
         public readonly List<ReplayEvent> Cams = new List<ReplayEvent>();
         public readonly List<ReplayEvent> Envs = new List<ReplayEvent>();
         public readonly List<ReplayEvent> Winds = new List<ReplayEvent>(); // F = intensity, Pos.x = angle in degrees
+        public readonly List<ReplayEvent> Waters = new List<ReplayEvent>(); // F = the game's wave clock (recordings from 0.0.27)
         public readonly List<ReplayEvent> Markers = new List<ReplayEvent>(); // F = MarkerKind, S = text
         public readonly List<ReplayEvent> Vitals = new List<ReplayEvent>(); // the recorder's maximums: F = stamina, Pos.x = eitr
         public readonly Dictionary<RecId, List<ReplayEvent>> HiFi = new Dictionary<RecId, List<ReplayEvent>>();
@@ -399,6 +407,10 @@ namespace ReplayMod
                             e.Pos = new Vector3(r.ReadSingle(), 0f, 0f);
                             e.F = r.ReadSingle();
                             d.Winds.Add(e);
+                            break;
+                        case RecType.Water:
+                            e.F = r.ReadSingle();
+                            d.Waters.Add(e);
                             break;
                         case RecType.Vitals:
                             e.F = r.ReadSingle();

@@ -1,8 +1,8 @@
 # Packages Replay Mod as a Thunderstore-style zip that Gale / r2modman can import as a local mod:
 #   manifest.json, icon.png, README.md at the root, and plugins/ReplayMod.dll, which the mod manager
 #   installs to BepInEx/plugins/<Author>-Replay_Mod/.
-# Usage: pwsh tools/package.ps1 [-Author Local]   ->   dist/<Author>-Replay_Mod-<version>.zip
-param([string]$Author = "Local")
+# Usage: pwsh tools/package.ps1 [-Author Gargantua1866]   ->   dist/<Author>-Replay_Mod-<version>.zip
+param([string]$Author = "Gargantua1866")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 $proj = Join-Path $root "src\ReplayMod"
@@ -22,6 +22,7 @@ New-Item -ItemType Directory -Force (Join-Path $stage "plugins") | Out-Null
 Copy-Item $dll (Join-Path $stage "plugins")
 Copy-Item (Join-Path $PSScriptRoot "package\icon.png") $stage
 Copy-Item (Join-Path $root "README.md") $stage
+Copy-Item (Join-Path $root "CHANGELOG.md") $stage
 [ordered]@{
     name           = "Replay_Mod"
     version_number = $version

@@ -131,7 +131,7 @@ F9 takes a screenshot. The Export section has brightness, exposure and a camera 
 
 ### Export
 
-F10 renders the camera path, playhead to end, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. Files go to `...\ReplayMod\exports`.
+F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. Files go to `...\ReplayMod\exports`.
 
 Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
 
@@ -149,9 +149,12 @@ Settings are in `BepInEx/config/com.gargantua.replaymod.cfg`, or in the F1 menu 
 - Only the player recording or watching needs Replay Mod. Other players on a server don't.
 - Replay Mod replays other mods' RPCs aimed at recorded objects, such as weapon fire and effects. If a mod misbehaves in replays, turn off `ReplayModRpcs`.
 - `RecordPose` records your character's final bone pose, so animation mods replay as you saw them.
+- Mods that make teleporting faster, and the game's debug mode, can make replays unstable while you watch them. Normal play isn't affected.
 
 ## Known limits
 
 - Ragdolls and falling trees are simulated again during playback, so they may not match the original.
+- After a far teleport, the replay pauses while the new area loads. Press Space to go on.
+- A trimmed clip or a saved Replay Buffer shows the map as it was when recording started, plus what was explored during the clip. What was explored in between is missing.
 - Beyond the recorded zones, you see untouched nature from the seed.
 - The replay world shows up as `ReplayMod` in your world list.

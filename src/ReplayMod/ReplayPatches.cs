@@ -260,6 +260,18 @@ namespace ReplayMod
             }
         }
 
+        // Never remove the hidden viewer: the replay's controls and clock run through it.
+        [HarmonyPatch(typeof(ZNetScene), "RemoveObjects")]
+        private static class KeepTheViewer
+        {
+            private static void Prefix(List<ZDO> currentNearObjects)
+            {
+                if (!ReplaySession.Active || !Player.m_localPlayer) return;
+                ZDO z = Player.m_localPlayer.GetComponent<ZNetView>()?.GetZDO();
+                if (z != null) currentNearObjects.Add(z);
+            }
+        }
+
         // While loading after a far jump the viewer counts as teleporting (see ReplaySession.Loading).
         [HarmonyPatch(typeof(Player), nameof(Player.IsTeleporting))]
         private static class LoadLikeAPortal

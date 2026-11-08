@@ -523,9 +523,11 @@ namespace ReplayMod
                 p.transform.position = pos;
                 Rigidbody body = ReplaySession.Body(p);
                 if (body) body.position = pos;
-                // The game removes objects whose ZDO is outside the area around this position, and
-                // without the viewer no replay control works. A far jump in one frame did that.
+                // The game removes objects outside the area around the reference position, which the viewer
+                // itself only moves in its next LateUpdate. After a far jump the viewer was outside the old
+                // area and was removed, and without it the replay stopped (see also KeepTheViewer).
                 p.GetComponent<ZNetView>()?.GetZDO()?.SetPosition(pos);
+                ZNet.instance?.SetReferencePosition(pos);
             }
 
             if (ReplayUI.CursorFree)

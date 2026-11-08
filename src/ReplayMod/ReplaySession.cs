@@ -585,6 +585,7 @@ namespace ReplayMod
         // the viewer counts as teleporting (the game then builds 100 objects a frame, not 10) and a zone
         // is built every frame. Before, the destination took half a minute to fill in, in slow motion longer.
         public static bool Loading { get; private set; }
+        public static float LoadingSeconds => Time.unscaledTime - _loadingSince;
         private static float _loadingSince;
         private const float FarJump = 300f;
 

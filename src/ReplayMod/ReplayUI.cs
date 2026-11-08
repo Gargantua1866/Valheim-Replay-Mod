@@ -398,12 +398,23 @@ namespace ReplayMod
             DrawGrid();
             if (GameCamera.instance) CameraPath.DrawLabels(GameCamera.instance.GetComponent<Camera>());
             DrawToast();
+            if (ReplaySession.Loading) DrawLoading();
             MouseOverPanel = false;
             if (ShowStatus) Timeline();
             if (!CursorFree) return;
             _panel = GUILayout.Window(0x4D554E, new Rect(_panel.x, _panel.y, _panelW, _panelH), Panel, "Replay Mod", UiStyle.Window,
                 GUILayout.Width(_panelW), GUILayout.Height(_panelH));
             MouseOverPanel |= _panel.Contains(Event.current.mousePosition);
+        }
+
+        // Over the loading screen while the destination of a far jump loads (see ReplaySession.Loading).
+        private static void DrawLoading()
+        {
+            string text = $"Loading the area after a long jump ({ReplaySession.LoadingSeconds:0} s). The replay goes on when it's ready.";
+            Vector2 size = _label.CalcSize(new GUIContent(text));
+            var box = new Rect((Screen.width - size.x) / 2f - 14f, Screen.height * 0.42f, size.x + 28f, size.y + 16f);
+            GUI.Box(box, GUIContent.none);
+            GUI.Label(new Rect(box.x + 14f, box.y + 8f, size.x, size.y), text, _label);
         }
 
         // Timeline across the bottom. Click or drag on the track to seek (Tab frees the cursor).

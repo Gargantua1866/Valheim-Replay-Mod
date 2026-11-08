@@ -86,6 +86,7 @@ namespace ReplayMod
 
             Index();
             ReplayHud.Reset();
+            KeptAreas.Clear();
             CameraPath.Load(path);
             ReplayUI.NewReplay();
             _whitelist = Rpcs.ParseWhitelist(Rpcs.DefaultWhitelist + "," + Plugin.ExtraRpcs.Value);
@@ -120,6 +121,7 @@ namespace ReplayMod
             Active = false;
             Ready = false;
             Loading = false;
+            KeptAreas.Clear();
             Data = null;
             _alive.Clear();
             _static.Clear();
@@ -589,10 +591,24 @@ namespace ReplayMod
         private static float _loadingSince;
         private const float FarJump = 300f;
 
+        // Recorded samples this far apart are a teleport, not motion: they don't blend into each other.
+        // Blending the camera across the gap a teleport leaves made it cross the world in steps, each
+        // one far enough to load again.
+        internal static bool Teleported(Vector3 a, Vector3 b) => (b - a).sqrMagnitude > 100f * 100f;
+
+        // The areas the viewer last jumped away from stay loaded (their objects aren't removed, which
+        // also keeps their zones), so skipping back across a teleport doesn't load it again.
+        public static readonly List<Vector3> KeptAreas = new List<Vector3>();
+        private const int MaxKeptAreas = 2;
+
         internal static void ViewerMoved(Vector3 from, Vector3 to)
         {
             if (!Ready || (to - from).sqrMagnitude < FarJump * FarJump) return;
-            if (!Loading) Plugin.Log.LogInfo($"viewer jumped {(to - from).magnitude:0} m: loading");
+            KeptAreas.RemoveAll(k => (k - to).sqrMagnitude < FarJump * FarJump);
+            KeptAreas.Add(from);
+            if (KeptAreas.Count > MaxKeptAreas) KeptAreas.RemoveAt(0);
+            if (Loading || ZNetScene.instance.IsAreaReady(to)) return; // a kept area is there already
+            Plugin.Log.LogInfo($"viewer jumped {(to - from).magnitude:0} m: loading");
             Loading = true;
             _loadingSince = Time.unscaledTime;
         }
@@ -709,6 +725,7 @@ namespace ReplayMod
             }
             if (a == null) return false;
             float u = b != null && b.T > a.T ? Mathf.Clamp01((t - a.T) / (b.T - a.T)) : 0f;
+            if (b != null && Teleported(a.Pos, b.Pos)) u = t >= b.T ? 1f : 0f;
             pos = b != null ? Vector3.Lerp(a.Pos, b.Pos, u) : a.Pos;
             rot = b != null ? Quaternion.Slerp(RecordedRotation(a), RecordedRotation(b), u) : RecordedRotation(a);
             return true;
@@ -910,6 +927,7 @@ namespace ReplayMod
             ReplayEvent b = cams[Mathf.Clamp(i, 0, cams.Count - 1)];
             ReplayEvent a = cams[Mathf.Clamp(i - 1, 0, cams.Count - 1)];
             float u = b.T > a.T ? Mathf.Clamp01((t - a.T) / (b.T - a.T)) : 0f;
+            if (Teleported(a.Pos, b.Pos)) u = t >= b.T ? 1f : 0f;
             pos = Vector3.Lerp(a.Pos, b.Pos, u);
             rot = Quaternion.Slerp(a.Rot, b.Rot, u);
             fov = Mathf.Lerp(a.F, b.F, u);
@@ -999,11 +1017,11 @@ namespace ReplayMod
                 if (!nv) continue;
                 int i = Mathf.Clamp(LowerBound(s, t), 1, s.Count - 1);
                 ReplayEvent p1 = s[i - 1], p2 = s[i];
-                if (p2.T - p1.T > 0.25f) continue; // a gap: the character left the lane
+                if (p2.T - p1.T > 0.25f || Teleported(p1.Pos, p2.Pos)) continue; // a gap or a teleport: ZSyncTransform places it
                 ReplayEvent p0 = s[Mathf.Max(i - 2, 0)], p3 = s[Mathf.Min(i + 1, s.Count - 1)];
-                // A neighbor across a gap says nothing about the speed here.
-                if (p1.T - p0.T > 0.25f) p0 = p1;
-                if (p3.T - p2.T > 0.25f) p3 = p2;
+                // A neighbor across a gap or a teleport says nothing about the speed here.
+                if (p1.T - p0.T > 0.25f || Teleported(p0.Pos, p1.Pos)) p0 = p1;
+                if (p3.T - p2.T > 0.25f || Teleported(p2.Pos, p3.Pos)) p3 = p2;
                 float u = Mathf.Clamp01((t - p1.T) / Mathf.Max(p2.T - p1.T, 1e-4f));
                 Vector3 pos = CurveThrough(p0.Pos, p0.T, p1.Pos, p1.T, p2.Pos, p2.T, p3.Pos, p3.T, u);
                 nv.transform.SetPositionAndRotation(pos, Quaternion.Slerp(p1.Rot, p2.Rot, u));

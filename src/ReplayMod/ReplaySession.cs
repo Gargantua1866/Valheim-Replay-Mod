@@ -270,7 +270,7 @@ namespace ReplayMod
                 HideGhost(p);
             }
             ReplayUI.HandleKeys();
-            if (!Paused && !Game.IsPaused() && !(Loading && !Exporter.RecordingSound))
+            if (!Paused && !Game.IsPaused() && !(Loading && Exporter.Busy && !Exporter.RecordingSound))
             {
                 T += Time.deltaTime;
                 if (T >= Duration)
@@ -583,7 +583,7 @@ namespace ReplayMod
         private static readonly AccessTools.FieldRef<Player, float> MaxEitr = AccessTools.FieldRefAccess<Player, float>("m_maxEitr");
 
         // After the viewer jumps far (a teleport in the recording, a bookmark, a followed target), the
-        // replay waits behind the loading screen the way a portal does, while zones and objects build:
+        // replay pauses behind the loading screen the way a portal waits, while zones and objects build:
         // the viewer counts as teleporting (the game then builds 100 objects a frame, not 10) and a zone
         // is built every frame. Before, the destination took half a minute to fill in, in slow motion longer.
         public static bool Loading { get; private set; }
@@ -609,6 +609,10 @@ namespace ReplayMod
             if (KeptAreas.Count > MaxKeptAreas) KeptAreas.RemoveAt(0);
             if (Loading || ZNetScene.instance.IsAreaReady(to)) return; // a kept area is there already
             Plugin.Log.LogInfo($"viewer jumped {(to - from).magnitude:0} m: loading");
+            // A load that started while playing left the frame rate in single digits for good; one that
+            // started paused didn't (cause not found). So the replay pauses, except in an export, where
+            // time only holds (pausing would stop the export).
+            if (!Exporter.Busy) Paused = true;
             Loading = true;
             _loadingSince = Time.unscaledTime;
         }

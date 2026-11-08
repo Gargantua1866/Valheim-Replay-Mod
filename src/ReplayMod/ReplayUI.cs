@@ -410,7 +410,7 @@ namespace ReplayMod
         // Over the loading screen while the destination of a far jump loads (see ReplaySession.Loading).
         private static void DrawLoading()
         {
-            string text = $"Loading area after a far teleport ({ReplaySession.LoadingSeconds:0} s)";
+            string text = $"Loading area after a far teleport ({ReplaySession.LoadingSeconds:0} s). The replay is paused.";
             Vector2 size = _label.CalcSize(new GUIContent(text));
             var box = new Rect((Screen.width - size.x) / 2f - 14f, Screen.height * 0.42f, size.x + 28f, size.y + 16f);
             GUI.Box(box, GUIContent.none);

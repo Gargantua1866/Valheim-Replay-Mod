@@ -239,7 +239,6 @@ namespace ReplayMod
             _settleFrames = SettleFrames;
             Ready = true;
             Plugin.Log.LogInfo($"replay ready: {_alive.Count} objects at t=0");
-            PerfProbe.After("after the replay started", 10f);
         }
 
         private static void SetupGhost(Player p)
@@ -666,8 +665,6 @@ namespace ReplayMod
             // area's weather fading out slowly.
             EnvironmentChanged();
             Plugin.Log.LogInfo($"loaded in {Time.unscaledTime - _loadingSince:0.0} s{(ready ? "" : " (gave up waiting)")}");
-            PerfProbe.After("after a far load", 5f);
-            PerfProbe.After("after a far load", 20f);
         }
 
         // The recording player at the replay's time: respawning made a new player object.

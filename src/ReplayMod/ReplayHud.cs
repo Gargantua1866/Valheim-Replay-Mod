@@ -18,13 +18,35 @@ namespace ReplayMod
             _path = null;
             _explored = 0;
             _mapStale = true;
-            _staleT = float.NaN;
+            _prevT = 0f;
+            _lastJump = -10f;
         }
 
         public static void Update(Player ghost)
         {
             UpdateBiome(ghost);
             UpdateMap();
+            HideDead(ghost);
+        }
+
+        // ---- Dead players
+
+        // A player who dies isn't removed until they respawn: every machine hides the body when the
+        // OnDeath RPC arrives. That RPC isn't replayed, and a seek has to bring the body back, so the
+        // recorded dead flag decides.
+        private static readonly AccessTools.FieldRef<Character, GameObject> Visual = AccessTools.FieldRefAccess<Character, GameObject>("m_visual");
+
+        private static void HideDead(Player ghost)
+        {
+            foreach (Player p in Player.GetAllPlayers())
+            {
+                if (p == ghost) continue;
+                ZDO z = p.GetComponent<ZNetView>()?.GetZDO();
+                GameObject visual = Visual(p);
+                if (z == null || !visual) continue;
+                bool dead = z.GetBool(ZDOVars.s_dead);
+                if (visual.activeSelf == dead) visual.SetActive(!dead);
+            }
         }
 
         // ---- Food and status effects
@@ -146,7 +168,7 @@ namespace ReplayMod
         private static List<(float T, Vector3 Pos)> _path;
         private static int _explored;
         private static bool _mapStale;
-        private static float _staleT, _staleSince;
+        private static float _prevT, _lastJump;
 
         private static void BuildPath(float interval)
         {
@@ -168,17 +190,15 @@ namespace ReplayMod
             float t = ReplaySession.T;
             int due = _explored;
             while (due < _path.Count && _path[due].T <= t) due++;
-            // Backward, or far forward: build the whole map once the timeline is let go of.
-            if (_mapStale || (_explored > 0 && _path[_explored - 1].T > t) || due - _explored > 3)
+            // A seek or a drag on the timeline. Playing moves time a little each frame; this doesn't.
+            float step = t - _prevT;
+            _prevT = t;
+            if (step < 0f || step > 1f) _lastJump = Time.unscaledTime;
+            // Backward, or far forward: build the whole map, once the timeline has been let go of.
+            if ((_explored > 0 && _path[_explored - 1].T > t) || due - _explored > 3) _mapStale = true;
+            if (_mapStale)
             {
-                _mapStale = true;
-                if (t != _staleT)
-                {
-                    _staleT = t;
-                    _staleSince = Time.unscaledTime;
-                    return;
-                }
-                if (Time.unscaledTime - _staleSince < 0.3f) return;
+                if (Time.unscaledTime - _lastJump < 0.3f) return;
                 Rebuild(map, t);
                 _mapStale = false;
                 return;

@@ -246,15 +246,42 @@ namespace ReplayMod
             }
         }
 
-        // Cut the loading screen the moment the replay is ready instead of fading it over scaled time.
+        // Cut the loading screen the moment the replay is ready instead of fading it over scaled time, and
+        // show it at once while loading after a far jump (paused, scaled time wouldn't fade it in).
         [HarmonyPatch(typeof(Hud), "UpdateBlackScreen")]
         private static class NoLoadingFade
         {
             private static void Postfix(Hud __instance)
             {
                 if (!ReplaySession.Ready) return;
-                __instance.m_loadingScreen.alpha = 0f;
-                __instance.m_loadingScreen.gameObject.SetActive(false);
+                bool show = ReplaySession.Loading && !Exporter.Busy;
+                __instance.m_loadingScreen.alpha = show ? 1f : 0f;
+                __instance.m_loadingScreen.gameObject.SetActive(show);
+            }
+        }
+
+        // While loading after a far jump the viewer counts as teleporting (see ReplaySession.Loading).
+        [HarmonyPatch(typeof(Player), nameof(Player.IsTeleporting))]
+        private static class LoadLikeAPortal
+        {
+            private static void Postfix(Player __instance, ref bool __result)
+            {
+                if (ReplaySession.Loading && IsGhost(__instance)) __result = true;
+            }
+        }
+
+        // Zones are built on a 0.1 s timer of scaled time: slower in slow motion, never while paused. In
+        // replays it runs on real time, and while loading after a far jump it builds one every frame.
+        [HarmonyPatch(typeof(ZoneSystem), "Update")]
+        private static class ZonesInRealTime
+        {
+            private static readonly AccessTools.FieldRef<ZoneSystem, float> Timer = AccessTools.FieldRefAccess<ZoneSystem, float>("m_updateTimer");
+
+            private static void Prefix(ZoneSystem __instance)
+            {
+                if (!ReplaySession.Active) return;
+                if (ReplaySession.Loading) Timer(__instance) = 1f;
+                else Timer(__instance) += Time.unscaledDeltaTime - Time.deltaTime;
             }
         }
 

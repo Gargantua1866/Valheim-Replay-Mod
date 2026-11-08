@@ -119,6 +119,7 @@ namespace ReplayMod
             SessionFlags.SetValue(null, _prevFlags);
             Active = false;
             Ready = false;
+            Loading = false;
             Data = null;
             _alive.Clear();
             _static.Clear();
@@ -267,7 +268,7 @@ namespace ReplayMod
                 HideGhost(p);
             }
             ReplayUI.HandleKeys();
-            if (!Paused && !Game.IsPaused())
+            if (!Paused && !Game.IsPaused() && !(Loading && !Exporter.RecordingSound))
             {
                 T += Time.deltaTime;
                 if (T >= Duration)
@@ -290,6 +291,7 @@ namespace ReplayMod
             }
             ApplyVitals(p);
             ReplayHud.Update(p);
+            UpdateLoading(p.transform.position);
             ApplyHidden();
             if (Paused)
             {
@@ -577,6 +579,32 @@ namespace ReplayMod
         private static readonly AccessTools.FieldRef<Player, float> MaxStamina = AccessTools.FieldRefAccess<Player, float>("m_maxStamina");
         private static readonly AccessTools.FieldRef<Player, float> Eitr = AccessTools.FieldRefAccess<Player, float>("m_eitr");
         private static readonly AccessTools.FieldRef<Player, float> MaxEitr = AccessTools.FieldRefAccess<Player, float>("m_maxEitr");
+
+        // After the viewer jumps far (a teleport in the recording, a bookmark, a followed target), the
+        // replay waits behind the loading screen the way a portal does, while zones and objects build:
+        // the viewer counts as teleporting (the game then builds 100 objects a frame, not 10) and a zone
+        // is built every frame. Before, the destination took half a minute to fill in, in slow motion longer.
+        public static bool Loading { get; private set; }
+        private static float _loadingSince;
+        private const float FarJump = 300f;
+
+        internal static void ViewerMoved(Vector3 from, Vector3 to)
+        {
+            if (!Ready || (to - from).sqrMagnitude < FarJump * FarJump) return;
+            if (!Loading) Plugin.Log.LogInfo($"viewer jumped {(to - from).magnitude:0} m: loading");
+            Loading = true;
+            _loadingSince = Time.unscaledTime;
+        }
+
+        private static void UpdateLoading(Vector3 at)
+        {
+            if (!Loading) return;
+            bool ready = ZoneSystem.instance && ZoneSystem.instance.IsActiveAreaLoaded() && ZNetScene.instance.IsAreaReady(at);
+            // A portal gives up after 15 s too.
+            if (!ready && Time.unscaledTime - _loadingSince < 15f) return;
+            Loading = false;
+            Plugin.Log.LogInfo($"loaded in {Time.unscaledTime - _loadingSince:0.0} s{(ready ? "" : " (gave up waiting)")}");
+        }
 
         // The recording player at the replay's time: respawning made a new player object.
         public static RecId RecordedId()

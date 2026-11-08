@@ -23,6 +23,7 @@ namespace ReplayMod
 
         public static Span Range = Span.CameraPath;
         public static bool Busy { get; private set; }
+        public static bool RecordingSound { get; private set; }
         public static string Status = "";
         public static bool HideUi => Busy || _shotFrame == Time.frameCount;
 
@@ -239,6 +240,13 @@ namespace ReplayMod
             float nextLog = 0f;
             while (!_cancel && ReplaySession.Active && ReplaySession.T < end - 1e-4f && error == null)
             {
+                if (ReplaySession.Loading)
+                {
+                    // Time holds while the destination of a far jump loads; those frames aren't the video.
+                    Status = "Exporting video: loading";
+                    yield return null;
+                    continue;
+                }
                 yield return new WaitForEndOfFrame();
                 Texture2D tex = ScreenCapture.CaptureScreenshotAsTexture(scale);
                 try
@@ -283,6 +291,7 @@ namespace ReplayMod
                 if (cap)
                 {
                     cap.Begin();
+                    RecordingSound = true; // time doesn't wait for loading here, or the sound would drift
                     ReplaySession.Paused = false;
                     while (!_cancel && ReplaySession.Active && ReplaySession.T < end - 1e-4f)
                     {
@@ -290,6 +299,7 @@ namespace ReplayMod
                         yield return null;
                     }
                     ReplaySession.Paused = true;
+                    RecordingSound = false;
                     try
                     {
                         cap.End(wav);
@@ -324,7 +334,7 @@ namespace ReplayMod
                 }
             }
 
-            Busy = false;
+            Busy = RecordingSound = false;
             string where = File.Exists(final) ? final : videoOnly;
             Status = _cancel ? "Export canceled" : error != null ? $"Export failed: {error}" : $"Exported {frames} frames to {where}";
             if (error != null) Plugin.Log.LogError(Status);

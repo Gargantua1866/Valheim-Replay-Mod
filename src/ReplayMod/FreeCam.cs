@@ -519,6 +519,7 @@ namespace ReplayMod
             Player p = Player.m_localPlayer;
             if (p)
             {
+                ReplaySession.ViewerMoved(p.transform.position, pos);
                 p.transform.position = pos;
                 Rigidbody body = ReplaySession.Body(p);
                 if (body) body.position = pos;

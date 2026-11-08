@@ -891,6 +891,40 @@ namespace ReplayMod
             return b.T > a.T && b.F >= a.F ? Mathf.Lerp(a.F, b.F, Mathf.Clamp01((t - a.T) / (b.T - a.T))) : a.F + t - a.T;
         }
 
+        // The recording player's hotbar at the replay's time, as an inventory the hotbar can draw.
+        // Empty for recordings made before 0.0.28.
+        private static Inventory _hotbar;
+        private static HotbarSample _hotbarShown;
+
+        internal static Inventory HotbarAt()
+        {
+            if (_hotbar == null) _hotbar = new Inventory("ReplayHotbar", null, 8, 1);
+            List<HotbarSample> list = Data.Hotbars;
+            int lo = 0, hi = list.Count;
+            while (lo < hi) { int mid = (lo + hi) / 2; if (list[mid].T <= T) lo = mid + 1; else hi = mid; }
+            HotbarSample s = lo > 0 ? list[lo - 1] : null;
+            if (s == _hotbarShown && _hotbarShown != null) return _hotbar;
+            _hotbarShown = s;
+            List<ItemDrop.ItemData> items = _hotbar.GetAllItems();
+            items.Clear(); // the list itself, so no inventory-changed callbacks run
+            foreach (HotbarSlot slot in s?.Slots ?? new HotbarSlot[0])
+            {
+                GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(slot.Prefab) : null;
+                ItemDrop drop = prefab ? prefab.GetComponent<ItemDrop>() : null;
+                if (!drop) continue; // an item from a mod that isn't installed now
+                ItemDrop.ItemData item = drop.m_itemData.Clone();
+                item.m_dropPrefab = prefab;
+                item.m_stack = slot.Stack;
+                item.m_quality = slot.Quality;
+                item.m_variant = slot.Variant;
+                item.m_durability = slot.Durability;
+                item.m_equipped = slot.Equipped;
+                item.m_gridPos = new Vector2i(slot.Slot, 0);
+                items.Add(item);
+            }
+            return _hotbar;
+        }
+
         private static bool _clothHookFailed;
 
         private static void KeepClothHook()

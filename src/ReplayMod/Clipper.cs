@@ -79,7 +79,7 @@ namespace ReplayMod
             var partsHeaders = new Dictionary<RecId, byte[]>();
             var partsRest = new Dictionary<RecId, Dictionary<ushort, byte[]>>(); // where each moving part stands
             var movingAlive = new HashSet<RecId>();                // moving objects that exist right now
-            byte[] env = null, wind = null, vitals = null;
+            byte[] env = null, wind = null, vitals = null, hotbar = null;
             float? waterOffset = null;                             // wave clock minus recording time
             ReplayHeader header = null;
             Vector3? camPos = null;
@@ -114,6 +114,7 @@ namespace ReplayMod
                 if (env != null) Put(RecType.Env, 0f, env);
                 if (wind != null) Put(RecType.Wind, 0f, wind);
                 if (vitals != null) Put(RecType.Vitals, 0f, vitals);
+                if (hotbar != null) Put(RecType.Hotbar, 0f, hotbar);
                 if (waterOffset.HasValue) Put(RecType.Water, 0f, BitConverter.GetBytes(waterOffset.Value + from));
             }
 
@@ -142,6 +143,7 @@ namespace ReplayMod
                     case RecType.Env: env = body; break;
                     case RecType.Wind: wind = body; break;
                     case RecType.Vitals: vitals = body; break;
+                    case RecType.Hotbar: hotbar = body; break;
                     case RecType.Water: waterOffset = BitConverter.ToSingle(body, 0) - t; break;
                     case RecType.Cam: camPos = new Vector3(BitConverter.ToSingle(body, 0), BitConverter.ToSingle(body, 4), BitConverter.ToSingle(body, 8)); break;
                     case RecType.Parts:
@@ -249,6 +251,14 @@ namespace ReplayMod
                 case RecType.Vitals:
                 case RecType.Wind: Copy(8); break;
                 case RecType.Water: Copy(4); break;
+                case RecType.Hotbar:
+                    for (int n = Int(); n > 0; n--)
+                    {
+                        Copy(1);
+                        Text();
+                        Copy(4 + 4 + 4 + 4 + 1);
+                    }
+                    break;
                 case RecType.HiFi: Copy(12 + 12 + 16); break;
                 case RecType.PoseBones:
                 case RecType.PartsHeader:
@@ -300,6 +310,7 @@ namespace ReplayMod
                     Zdo(w, 3f, 2, true);
                     w.Write((byte)RecType.Env); w.Write(3f); w.Write(0.5f); w.Write("Clear"); w.Write((byte)RecType.Wind); w.Write(3f); w.Write(10f); w.Write(0.5f);
                     w.Write((byte)RecType.Water); w.Write(3f); w.Write(103f);
+                    w.Write((byte)RecType.Hotbar); w.Write(3f); w.Write(1); w.Write((byte)2); w.Write("Club"); w.Write(1); w.Write(1); w.Write(0); w.Write(50f); w.Write(true);
                     Zdo(w, 6f, 2, true);
                 });
                 Source(b, w =>
@@ -315,7 +326,9 @@ namespace ReplayMod
                     && d.Events.Exists(e => e.Id.Id == 2 && e.Type == RecType.Zdo && e.T == 2f)
                     && d.Events.Exists(e => e.Id.Id == 3 && e.Type == RecType.Remove && e.T == 2f)
                     && d.Envs.Count == 1 && d.Envs[0].T == 0f && d.Winds.Count == 1 && d.Winds[0].T == 0f && d.Winds[0].Pos.x == 10f && d.Duration <= 6f
-                    && d.Waters.Count == 1 && d.Waters[0].T == 0f && d.Waters[0].F == 104f;
+                    && d.Waters.Count == 1 && d.Waters[0].T == 0f && d.Waters[0].F == 104f
+                    && d.Hotbars.Count == 1 && d.Hotbars[0].T == 0f && d.Hotbars[0].Slots.Length == 1 && d.Hotbars[0].Slots[0].Prefab == "Club"
+                    && d.Hotbars[0].Slots[0].Slot == 2 && d.Hotbars[0].Slots[0].Durability == 50f && d.Hotbars[0].Slots[0].Equipped;
                 if (!ok) Plugin.Log.LogError("Clipper self-check FAILED: a cut recording doesn't match its source");
             }
             catch (Exception e)

@@ -28,6 +28,7 @@ A recording holds:
 - players, creatures, ships and projectiles the game has loaded around you
 - scenery (trees, rocks, buildings, terrain edits) in the 3x3 zones around you
 - attacks and effects
+- your hotbar, shown in the replay when the game HUD is on
 - your camera, the time of day, the weather, the wind and the waves
 
 Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\replays`. Each `.replay` file has a `.json` next to it with size and timing statistics.

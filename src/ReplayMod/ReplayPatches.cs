@@ -299,6 +299,27 @@ namespace ReplayMod
             }
         }
 
+        // The hotbar draws the viewer's own hidden character. In a replay it draws the recording player's
+        // hotbar instead, swapped into that character only for the call.
+        [HarmonyPatch(typeof(HotkeyBar), "UpdateIcons")]
+        private static class RecordedHotbar
+        {
+            private static readonly AccessTools.FieldRef<Humanoid, Inventory> Items = AccessTools.FieldRefAccess<Humanoid, Inventory>("m_inventory");
+
+            private static void Prefix(Player player, out Inventory __state)
+            {
+                __state = null;
+                if (!ReplaySession.Active || !ReplaySession.Ready || !player) return;
+                __state = Items(player);
+                Items(player) = ReplaySession.HotbarAt();
+            }
+
+            private static void Finalizer(Player player, Inventory __state)
+            {
+                if (__state != null) Items(player) = __state;
+            }
+        }
+
         // The wave clock comes from the recording (see RecordedWaterTime). The game's own smoothing would
         // lag after a seek and doesn't follow pause or slow motion.
         [HarmonyPatch(typeof(WaterVolume), "UpdateWaterTime")]

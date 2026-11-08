@@ -169,6 +169,7 @@ namespace ReplayMod
             }
             _tracked.Clear();
             _movers.Clear();
+            _hotbarKey = null;
             _dynamic.Clear();
             _bossesSeen.Clear();
             _maxStamina = _maxEitr = -1f;
@@ -256,6 +257,7 @@ namespace ReplayMod
                     _maxEitr = me.GetMaxEitr();
                     _w.Vitals(t, _maxStamina, _maxEitr);
                 }
+                RecordHotbar(t, me);
                 float ms = (float)sw.Elapsed.TotalMilliseconds;
                 _sampleMs += ms;
                 _sampleMsMax = Mathf.Max(_sampleMsMax, ms);
@@ -335,6 +337,36 @@ namespace ReplayMod
                 // of the zone ring stays as it was; only scenery destroyed inside the ring is removed.
                 if (tr.Dynamic || InRing(tr.Zone, pz, ring)) _w.Remove(t, id);
             }
+        }
+
+        // A player's inventory isn't in the ZDO, so the hotbar is recorded on its own, whenever it changes.
+        private static string _hotbarKey;
+        private static readonly List<ItemDrop.ItemData> _bound = new List<ItemDrop.ItemData>();
+        private static readonly List<HotbarSlot> _slots = new List<HotbarSlot>();
+        private static readonly StringBuilder _hotbarText = new StringBuilder();
+
+        private static void RecordHotbar(float t, Player p)
+        {
+            p.GetInventory().GetBoundItems(_bound);
+            _slots.Clear();
+            _hotbarText.Clear();
+            foreach (ItemDrop.ItemData item in _bound)
+            {
+                if (!item.m_dropPrefab) continue;
+                var s = new HotbarSlot
+                {
+                    Slot = item.m_gridPos.x, Prefab = item.m_dropPrefab.name, Stack = item.m_stack, Quality = item.m_quality,
+                    Variant = item.m_variant, Durability = item.m_durability, Equipped = item.m_equipped,
+                };
+                _slots.Add(s);
+                // Durability in whole percent: wear from every hit would otherwise write a record each sample.
+                _hotbarText.Append(s.Slot).Append(s.Prefab).Append(',').Append(s.Stack).Append(',').Append(s.Quality).Append(',').Append(s.Variant)
+                    .Append(',').Append(Mathf.RoundToInt(item.GetDurabilityPercentage() * 100f)).Append(s.Equipped ? '+' : '-');
+            }
+            string key = _hotbarText.ToString();
+            if (key == _hotbarKey) return;
+            _hotbarKey = key;
+            _w.Hotbar(t, _slots);
         }
 
         private static bool InRing(Vector2s a, Vector2s b, int ring) => Math.Abs(a.x - b.x) <= ring && Math.Abs(a.y - b.y) <= ring;

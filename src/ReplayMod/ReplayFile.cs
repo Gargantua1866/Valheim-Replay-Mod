@@ -9,7 +9,7 @@ namespace ReplayMod
     // File layout: a Deflate stream holding the header, then records in time order, then End.
     // Every ZDO record carries the object's full state (ZDO.Serialize plus position), so seeking is
     // "latest record at or before t" per object.
-    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, End = 255 }
+    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, End = 255 }
 
     // Timeline markers: things worth jumping to.
     internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill }
@@ -216,6 +216,24 @@ namespace ReplayMod
             Stats.OtherBytes += Commit();
         }
 
+        // The recording player's whole hotbar, written when anything in it changes.
+        public void Hotbar(float t, List<HotbarSlot> slots)
+        {
+            var w = Begin(RecType.Hotbar, t);
+            w.Write(slots.Count);
+            foreach (HotbarSlot s in slots)
+            {
+                w.Write((byte)s.Slot);
+                w.Write(s.Prefab);
+                w.Write(s.Stack);
+                w.Write(s.Quality);
+                w.Write(s.Variant);
+                w.Write(s.Durability);
+                w.Write(s.Equipped);
+            }
+            Stats.OtherBytes += Commit();
+        }
+
         public void Marker(float t, MarkerKind kind, Vector3 pos, string text)
         {
             var w = Begin(RecType.Marker, t);
@@ -318,6 +336,21 @@ namespace ReplayMod
         public byte[] Data;
     }
 
+    internal struct HotbarSlot
+    {
+        public int Slot;
+        public string Prefab;
+        public int Stack, Quality, Variant;
+        public float Durability;
+        public bool Equipped;
+    }
+
+    internal class HotbarSample
+    {
+        public float T;
+        public HotbarSlot[] Slots;
+    }
+
     internal struct PartSample
     {
         public float T;
@@ -349,6 +382,7 @@ namespace ReplayMod
         public readonly List<ReplayEvent> Envs = new List<ReplayEvent>();
         public readonly List<ReplayEvent> Winds = new List<ReplayEvent>(); // F = intensity, Pos.x = angle in degrees
         public readonly List<ReplayEvent> Waters = new List<ReplayEvent>(); // F = the game's wave clock (recordings from 0.0.27)
+        public readonly List<HotbarSample> Hotbars = new List<HotbarSample>(); // recordings from 0.0.28
         public readonly List<ReplayEvent> Markers = new List<ReplayEvent>(); // F = MarkerKind, S = text
         public readonly List<ReplayEvent> Vitals = new List<ReplayEvent>(); // the recorder's maximums: F = stamina, Pos.x = eitr
         public readonly Dictionary<RecId, List<ReplayEvent>> HiFi = new Dictionary<RecId, List<ReplayEvent>>();
@@ -412,6 +446,20 @@ namespace ReplayMod
                             e.F = r.ReadSingle();
                             d.Waters.Add(e);
                             break;
+                        case RecType.Hotbar:
+                        {
+                            var slots = new HotbarSlot[r.ReadInt32()];
+                            for (int i = 0; i < slots.Length; i++)
+                            {
+                                slots[i] = new HotbarSlot
+                                {
+                                    Slot = r.ReadByte(), Prefab = r.ReadString(), Stack = r.ReadInt32(), Quality = r.ReadInt32(),
+                                    Variant = r.ReadInt32(), Durability = r.ReadSingle(), Equipped = r.ReadBoolean(),
+                                };
+                            }
+                            d.Hotbars.Add(new HotbarSample { T = e.T, Slots = slots });
+                            break;
+                        }
                         case RecType.Vitals:
                             e.F = r.ReadSingle();
                             e.Pos = new Vector3(r.ReadSingle(), 0f, 0f);

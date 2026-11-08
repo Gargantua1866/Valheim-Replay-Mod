@@ -9,4 +9,4 @@ First public release.
 - Recordings hold players, creatures, ships, vehicles and projectiles, scenery around you, effects, your camera, time of day, weather, wind and waves. They also hold your hotbar, food, status effects and explored map.
 - Moving objects are recorded at a high rate, so fast vehicles and slow motion play back smoothly.
 - Trim a section into a new replay, or export the camera path, a selected section or the whole replay as MP4 with sound.
-- After a far teleport the replay pauses while the new area loads, and the area you left stays loaded.
+- After a far teleport the replay pauses while the new area loads. The terrain of the area you left stays loaded, so going back is quicker.

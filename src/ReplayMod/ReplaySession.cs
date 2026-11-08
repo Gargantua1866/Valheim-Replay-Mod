@@ -303,6 +303,7 @@ namespace ReplayMod
             ApplyVitals(p);
             ReplayHud.Update(p);
             UpdateLoading(p.transform.position);
+            KeepZones();
             ApplyHidden();
             if (Paused)
             {
@@ -606,10 +607,34 @@ namespace ReplayMod
         // one far enough to load again.
         internal static bool Teleported(Vector3 a, Vector3 b) => (b - a).sqrMagnitude > 100f * 100f;
 
-        // The areas the viewer last jumped away from stay loaded (their objects aren't removed, which
-        // also keeps their zones), so skipping back across a teleport doesn't load it again.
+        // The terrain of the areas the viewer last jumped away from stays loaded, so skipping back across a
+        // teleport only has to bring back the objects (100 a frame). Keeping their objects too, as 0.0.32 did,
+        // left two areas' worth in the scene (35,000 objects, 10 fps).
         public static readonly List<Vector3> KeptAreas = new List<Vector3>();
         private const int MaxKeptAreas = 2;
+        private static readonly MethodInfo PokeZone = AccessTools.Method(typeof(ZoneSystem), "PokeLocalZone");
+        private static float _nextPoke;
+
+        private static void KeepZones()
+        {
+            ZoneSystem zs = ZoneSystem.instance;
+            if (KeptAreas.Count == 0 || !zs || PokeZone == null || Time.unscaledTime < _nextPoke) return;
+            _nextPoke = Time.unscaledTime + 1f; // zones go 4 s after nothing pokes them
+            int r = ZNet.instance.GetSyncedSimulationDistance().NearSimulationDistance;
+            foreach (Vector3 kept in KeptAreas)
+            {
+                Vector2s center = ZoneSystem.GetZone(kept);
+                for (int y = center.y - r; y <= center.y + r; y++)
+                {
+                    for (int x = center.x - r; x <= center.x + r; x++)
+                    {
+                        var zone = new Vector2s(x, y);
+                        // Only zones still there: poking a missing one would build it.
+                        if (zs.IsZoneLoaded(zone) && zs.ZonesWithinRadius(center, zone, r)) PokeZone.Invoke(zs, new object[] { zone });
+                    }
+                }
+            }
+        }
 
         internal static void ViewerMoved(Vector3 from, Vector3 to)
         {
@@ -617,7 +642,7 @@ namespace ReplayMod
             KeptAreas.RemoveAll(k => (k - to).sqrMagnitude < FarJump * FarJump);
             KeptAreas.Add(from);
             if (KeptAreas.Count > MaxKeptAreas) KeptAreas.RemoveAt(0);
-            if (Loading || ZNetScene.instance.IsAreaReady(to)) return; // a kept area is there already
+            if (Loading || ZNetScene.instance.IsAreaReady(to)) return; // nothing to wait for
             Plugin.Log.LogInfo($"viewer jumped {(to - from).magnitude:0} m: loading");
             // A load that started while playing left the frame rate in single digits for good; one that
             // started paused didn't (cause not found). So the replay pauses, except in an export, where

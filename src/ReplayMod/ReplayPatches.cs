@@ -260,8 +260,7 @@ namespace ReplayMod
             }
         }
 
-        // Never remove the hidden viewer: the replay's controls and clock run through it. Nor the objects
-        // of the areas it last jumped away from (see ReplaySession.KeptAreas).
+        // Never remove the hidden viewer: the replay's controls and clock run through it.
         [HarmonyPatch(typeof(ZNetScene), "RemoveObjects")]
         private static class KeepTheViewer
         {
@@ -270,8 +269,6 @@ namespace ReplayMod
                 if (!ReplaySession.Active || !Player.m_localPlayer) return;
                 ZDO z = Player.m_localPlayer.GetComponent<ZNetView>()?.GetZDO();
                 if (z != null) currentNearObjects.Add(z);
-                SimulationDistance area = ZNet.instance.GetSyncedSimulationDistance();
-                foreach (Vector3 kept in ReplaySession.KeptAreas) ZDOMan.instance.FindSectorObjects(ZoneSystem.GetZone(kept), area, currentNearObjects);
             }
         }
 

@@ -26,7 +26,7 @@ Copy-Item (Join-Path $root "CHANGELOG.md") $stage
 [ordered]@{
     name           = "Replay_Mod"
     version_number = $version
-    website_url    = ""
+    website_url    = "https://github.com/Gargantua1866/Valheim-Replay-Mod"
     description    = "Records gameplay and plays it back in a separate world, where you fly a free camera, build camera paths and export MP4 video."
     dependencies   = @("denikson-BepInExPack_Valheim-5.4.2351")
 } | ConvertTo-Json | Set-Content (Join-Path $stage "manifest.json") -Encoding utf8NoBOM

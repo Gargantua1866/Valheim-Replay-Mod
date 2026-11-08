@@ -94,6 +94,9 @@ namespace ReplayMod
             {
                 m_seed = Data.Header.Seed,
                 m_worldGenVersion = Data.Header.WorldGenVersion,
+                // The game reuses a world's cached minimap only for the current world version, and a new
+                // World has none, so it drew the minimap again (5-6 s) for every replay of the same seed.
+                m_worldVersion = global::Version.World.CheatCleanSlate,
             };
             _prevFlags = (SaveSystemSessionFlags)SessionFlags.GetValue(null);
             SaveSystem.SetSessionFlags(SaveSystemSessionFlags.DontSaveCharacter | SaveSystemSessionFlags.DontSaveWorld);
@@ -270,6 +273,11 @@ namespace ReplayMod
                 HideGhost(p);
             }
             ReplayUI.HandleKeys();
+            if (_seekAfterJump)
+            {
+                _seekAfterJump = false;
+                Seek(T);
+            }
             if (!Paused && !Game.IsPaused() && !(Loading && Exporter.Busy && !Exporter.RecordingSound))
             {
                 T += Time.deltaTime;
@@ -589,6 +597,7 @@ namespace ReplayMod
         public static bool Loading { get; private set; }
         public static float LoadingSeconds => Time.unscaledTime - _loadingSince;
         private static float _loadingSince;
+        private static bool _seekAfterJump;
         private const float FarJump = 300f;
 
         // Recorded samples this far apart are a teleport, not motion: they don't blend into each other.
@@ -613,6 +622,9 @@ namespace ReplayMod
             // started paused didn't (cause not found). So the replay pauses, except in an export, where
             // time only holds (pausing would stop the export).
             if (!Exporter.Busy) Paused = true;
+            // Then the scene is applied again as if the timeline had been clicked here while paused, which
+            // never left the frame rate low; arriving by playing through the teleport did.
+            _seekAfterJump = true;
             Loading = true;
             _loadingSince = Time.unscaledTime;
         }
@@ -624,6 +636,9 @@ namespace ReplayMod
             // A portal gives up after 15 s too.
             if (!ready && Time.unscaledTime - _loadingSince < 15f) return;
             Loading = false;
+            // A portal switches the weather at once on arrival; without it an export showed the old
+            // area's weather fading out slowly.
+            EnvironmentChanged();
             Plugin.Log.LogInfo($"loaded in {Time.unscaledTime - _loadingSince:0.0} s{(ready ? "" : " (gave up waiting)")}");
         }
 

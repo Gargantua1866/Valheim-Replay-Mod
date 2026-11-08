@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.0.33";
+        public const string Version = "0.1.0";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;
@@ -46,7 +46,6 @@ namespace ReplayMod
         private void Awake()
         {
             Log = Logger;
-            MoveOldData();
             // New key names: the old ones hold Ctrl+F12, which Steam uses to record a clip, and would stay in existing config files.
             RecordKey = Config.Bind("Recording", "RecordShortcut", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftControl), "Start or stop recording.");
             ReplayBuffer = Config.Bind("Recording", "ReplayBuffer", false, "Keep recording quietly while you play, so the save key can keep what just happened. Uses as much as a normal recording does.");
@@ -61,7 +60,7 @@ namespace ReplayMod
             StaticZoneRing = Config.Bind("Recording", "StaticZoneRing", 1, "Scenery (trees, rocks, buildings) is recorded for whole 64 m zones within this many zones of you (1 = 3x3 zones).");
             KeyframeInterval = Config.Bind("Recording", "KeyframeInterval", 5f, "Seconds between full snapshots of moving objects.");
             RecordHiFi = Config.Bind("Recording", "RecordHiFi", true, "Also record the positions of nearby characters, and of vehicles and other moving objects, at a high rate (at least 50 Hz) for smooth motion. Files grow when many things move.");
-            HiFiRadius = Config.Bind("Recording", "HiFiRadius", 30f, "Characters within this many meters get the 50 Hz recording.");
+            HiFiRadius = Config.Bind("Recording", "HiFiRadius", 30f, "Characters within this many meters get the high-rate recording. Vehicles and other moving objects get it at any distance.");
             RecordPose = Config.Bind("Recording", "RecordPose", true, "Record your own character's final bone pose, so animation mods (and anything else that moves bones) replay exactly as you saw them.");
             PoseRate = Config.Bind("Recording", "PoseRate", 30f, "Pose samples per second.");
             ExtraRpcs = Config.Bind("Playback", "ExtraRpcs", "", "More recorded RPC names to replay, comma-separated, on top of the built-in visual-only list.");
@@ -104,28 +103,24 @@ namespace ReplayMod
             Log.LogInfo($"Replay Mod {Version} loaded; replays in {ReplayDir}");
         }
 
-        // The mod was called Muninn: bring along recordings and settings from then.
-        private void MoveOldData()
+        // A shortcut as players write it: "Ctrl+Shift+F10".
+        internal static string KeyText(ConfigEntry<KeyboardShortcut> entry)
         {
-            string root = Path.Combine(Application.persistentDataPath, "ReplayMod");
-            string oldRoot = Path.Combine(Application.persistentDataPath, "Muninn");
-            string oldConfig = Path.Combine(Paths.ConfigPath, "com.gargantua.muninn.cfg");
-            try
-            {
-                if (Directory.Exists(oldRoot) && !Directory.Exists(root)) Directory.Move(oldRoot, root);
-                string replays = Path.Combine(root, "replays");
-                if (Directory.Exists(replays))
-                {
-                    foreach (string f in Directory.GetFiles(replays, "*.muninn")) File.Move(f, Path.ChangeExtension(f, ".replay"));
-                }
-                if (File.Exists(oldConfig) && !File.Exists(Config.ConfigFilePath))
-                {
-                    File.Move(oldConfig, Config.ConfigFilePath);
-                    Config.Reload();
-                }
-            }
-            catch (System.Exception e) when (e is IOException || e is System.UnauthorizedAccessException) { Log.LogWarning($"couldn't move data from the old Muninn folders: {e.Message}"); }
+            KeyboardShortcut k = entry.Value;
+            if (k.MainKey == KeyCode.None) return "(no key set)";
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (KeyCode m in k.Modifiers) parts.Add(KeyName(m));
+            parts.Add(KeyName(k.MainKey));
+            return string.Join("+", parts);
         }
+
+        private static string KeyName(KeyCode c) => c switch
+        {
+            KeyCode.LeftControl or KeyCode.RightControl => "Ctrl",
+            KeyCode.LeftShift or KeyCode.RightShift => "Shift",
+            KeyCode.LeftAlt or KeyCode.RightAlt => "Alt",
+            _ => c.ToString(),
+        };
 
         private Player _spawned;
         private float _spawnedAt;

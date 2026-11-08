@@ -20,7 +20,9 @@ namespace ReplayMod
     internal class ReplayHeader
     {
         public const string Magic = "MUNINN"; // the mod's old name; existing recordings start with it
-        public const int FormatVersion = 6; // 2 added the pose lane, 3 vehicle parts, 4 markers, 5 vitals, 6 wind; older ones still read
+        // 2 added the pose lane, 3 vehicle parts, 4 markers, 5 vitals, 6 wind, 7 waves, hotbar, HUD, player and map.
+        // Older ones still read; a newer one is refused, since its new record types can't be skipped.
+        public const int FormatVersion = 7;
 
         public int Version = FormatVersion;
         public string GameVersion = "";
@@ -59,7 +61,9 @@ namespace ReplayMod
             var h = new ReplayHeader { Version = r.ReadInt32() };
             if (h.Version < 1 || h.Version > FormatVersion)
             {
-                throw new InvalidDataException($"replay format {h.Version}, this build reads {FormatVersion}");
+                throw new InvalidDataException(h.Version > FormatVersion
+                    ? $"it was recorded with a newer Replay Mod (format {h.Version}, this one reads up to {FormatVersion}). Update Replay Mod to watch it."
+                    : $"unknown replay format {h.Version}");
             }
             h.GameVersion = r.ReadString();
             h.WorldName = r.ReadString();

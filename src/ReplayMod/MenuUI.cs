@@ -207,7 +207,7 @@ namespace ReplayMod
                 row.SetActive(i < Mathf.Max(files.Length, 1));
                 ((RectTransform)row.transform).anchoredPosition = new Vector2(0f, -i * _step);
                 FileInfo f = i < files.Length ? files[i] : null;
-                RowText(row, "name", f != null ? DisplayName(f) : "No recordings yet. In game, Ctrl+F10 starts and stops.");
+                RowText(row, "name", f != null ? DisplayName(f) : $"No recordings yet. In game, {Plugin.KeyText(Plugin.RecordKey)} starts and stops.");
                 RowText(row, "modifiers", f != null ? Length(f) : "");
                 RowText(row, "seed", f != null ? $"{f.Length / 1048576f:0.0} MB" : "");
                 row.transform.Find("selected")?.gameObject.SetActive(f != null && string.Equals(f.FullName, _selected, StringComparison.OrdinalIgnoreCase));
@@ -398,7 +398,7 @@ namespace ReplayMod
             float minutes = Plugin.ReplayBufferMinutes.Value;
             SetLabel(_bufferButton.gameObject, $"Replay Buffer: {(Plugin.ReplayBuffer.Value ? "On" : "Off")}");
             SetText(_minutes, $"{minutes:0.#} min");
-            SetText(_hint, $"In the game, Ctrl+Shift+F10 keeps the last {minutes:0.#} minutes, and Ctrl+Alt+F10 turns it on or off.");
+            SetText(_hint, $"In the game, {Plugin.KeyText(Plugin.ReplayBufferKey)} keeps the last {minutes:0.#} minutes, and {Plugin.KeyText(Plugin.ReplayBufferToggleKey)} turns it on or off.");
             if (!force && _detailFor == _selected) return;
             _detailFor = _selected;
             _nameField.text = _selected != null ? Path.GetFileNameWithoutExtension(_selected) : "";
@@ -524,7 +524,7 @@ namespace ReplayMod
             GUILayout.Label("Plays with the character selected here; nothing is saved to it.");
             if (!string.IsNullOrEmpty(ReplaySession.LastError)) GUILayout.Label(ReplaySession.LastError);
             _scroll = GUILayout.BeginScrollView(_scroll);
-            if (_files == null || _files.Length == 0) GUILayout.Label("No recordings yet. In game, press Ctrl+F10 to start and stop.");
+            if (_files == null || _files.Length == 0) GUILayout.Label($"No recordings yet. In game, press {Plugin.KeyText(Plugin.RecordKey)} to start and stop.");
             foreach (FileInfo f in _files ?? new FileInfo[0])
             {
                 GUILayout.BeginHorizontal();

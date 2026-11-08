@@ -407,14 +407,17 @@ namespace ReplayMod
             MouseOverPanel |= _panel.Contains(Event.current.mousePosition);
         }
 
+        private static GUIStyle _noWrap;
+
         // Over the loading screen while the destination of a far jump loads (see ReplaySession.Loading).
         private static void DrawLoading()
         {
             string text = $"Loading area after a far teleport ({ReplaySession.LoadingSeconds:0} s). The replay is paused.";
-            Vector2 size = _label.CalcSize(new GUIContent(text));
+            if (_noWrap == null) _noWrap = new GUIStyle(_label) { wordWrap = false, clipping = TextClipping.Overflow };
+            Vector2 size = _noWrap.CalcSize(new GUIContent(text));
             var box = new Rect((Screen.width - size.x) / 2f - 14f, Screen.height * 0.42f, size.x + 28f, size.y + 16f);
             GUI.Box(box, GUIContent.none);
-            GUI.Label(new Rect(box.x + 14f, box.y + 8f, size.x, size.y), text, _label);
+            GUI.Label(new Rect(box.x + 14f, box.y + 8f, size.x + 4f, size.y), text, _noWrap);
         }
 
         // Timeline across the bottom. Click or drag on the track to seek (Tab frees the cursor).
@@ -1149,6 +1152,14 @@ namespace ReplayMod
         // Part of the replay to save as its own shorter replay.
         private static float _clipIn, _clipOut;
 
+        // The section selected on the timeline (the one Trim saves), if any.
+        public static bool Selection(out float start, out float end)
+        {
+            start = _clipIn;
+            end = _clipOut > 0f ? _clipOut : ReplaySession.Duration;
+            return _clipIn > 0f || _clipOut > 0f;
+        }
+
         public static void NewReplay()
         {
             _clipIn = _clipOut = 0f;
@@ -1317,7 +1328,13 @@ namespace ReplayMod
             Ui.Label("Range:");
             foreach (Exporter.Span sp in System.Enum.GetValues(typeof(Exporter.Span)))
             {
-                string label = sp == Exporter.Span.CameraPath ? "Camera path" : sp == Exporter.Span.PlayheadToEnd ? "Playhead to end" : "Whole replay";
+                string label = sp switch
+                {
+                    Exporter.Span.CameraPath => "Camera path",
+                    Exporter.Span.PlayheadToEnd => "Playhead to end",
+                    Exporter.Span.Selection => "Selection",
+                    _ => "Whole replay",
+                };
                 if (Ui.Toggle(Exporter.Range == sp, label, GUI.skin.button)) Exporter.Range = sp;
             }
             GUILayout.EndHorizontal();

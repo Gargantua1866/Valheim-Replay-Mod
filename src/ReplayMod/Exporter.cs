@@ -19,7 +19,7 @@ namespace ReplayMod
     // the two. The camera must be deterministic (path, original camera or attached) for the passes to match.
     internal static class Exporter
     {
-        public enum Span { CameraPath, PlayheadToEnd, WholeReplay }
+        public enum Span { CameraPath, PlayheadToEnd, Selection, WholeReplay }
 
         public static Span Range = Span.CameraPath;
         public static bool Busy { get; private set; }
@@ -190,6 +190,9 @@ namespace ReplayMod
                 case Span.PlayheadToEnd:
                     start = ReplaySession.T;
                     break;
+                case Span.Selection:
+                    if (!ReplayUI.Selection(out start, out end)) return false;
+                    break;
             }
             return end - start > 0.05f;
         }
@@ -205,7 +208,9 @@ namespace ReplayMod
             if (FindFfmpeg() == null) return NeedFfmpeg;
             if (!RangeFor(Range, out float start, out float end))
             {
-                return Range == Span.CameraPath ? "Export: the camera path needs at least 2 keys" : "Export: nothing to export from here";
+                return Range == Span.CameraPath ? "Export: the camera path needs at least 2 keys"
+                    : Range == Span.Selection ? "Export: drag along the timeline to select a section first"
+                    : "Export: nothing to export from here";
             }
             if (Range == Span.CameraPath) CameraPath.Follow = true;
             ReplayUI.CursorFree = false;

@@ -285,19 +285,38 @@ namespace ReplayMod
             }
         }
 
-        // Zones are built on a 0.1 s timer of scaled time: slower in slow motion, never while paused. In
-        // replays it runs on real time, and while loading after a far jump it builds one every frame.
+        // Zones are built on a 0.1 s timer of scaled time, one at a time: slower in slow motion, never while
+        // paused. In replays it runs on real time. While the replay first loads and after a far jump, zones
+        // are built for up to 40 ms every frame: the start of a replay took over half a minute.
         [HarmonyPatch(typeof(ZoneSystem), "Update")]
         private static class ZonesInRealTime
         {
             private static readonly AccessTools.FieldRef<ZoneSystem, float> Timer = AccessTools.FieldRefAccess<ZoneSystem, float>("m_updateTimer");
+            private static readonly MethodInfo CreateLocalZones = AccessTools.Method(typeof(ZoneSystem), "CreateLocalZones");
+
+            private static bool Rushing => !ReplaySession.Ready || ReplaySession.Loading;
 
             private static void Prefix(ZoneSystem __instance)
             {
                 if (!ReplaySession.Active) return;
-                if (ReplaySession.Loading) Timer(__instance) = 1f;
+                if (Rushing) Timer(__instance) = 1f;
                 else Timer(__instance) += Time.unscaledDeltaTime - Time.deltaTime;
             }
+
+            private static void Postfix(ZoneSystem __instance)
+            {
+                if (!ReplaySession.Active || !Rushing || !__instance.LocationsGenerated || ZNet.instance == null || CreateLocalZones == null) return;
+                var args = new object[] { ZNet.instance.GetReferencePosition() };
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                while (clock.ElapsedMilliseconds < 40 && (bool)CreateLocalZones.Invoke(__instance, args)) { }
+            }
+        }
+
+        // The game switches the controller layout on F9, which is the screenshot key in replays.
+        [HarmonyPatch(typeof(KeyHints), "Update")]
+        private static class NoLayoutSwitch
+        {
+            private static bool Prefix() => !ReplaySession.Active;
         }
 
         [HarmonyPatch(typeof(MonoUpdaters), "LateUpdate")]

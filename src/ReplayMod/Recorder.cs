@@ -110,7 +110,7 @@ namespace ReplayMod
             Player p = Player.m_localPlayer;
             if (!Buffering)
             {
-                p?.Message(MessageHud.MessageType.TopLeft, Active ? "Replay Mod: already recording" : "Replay Mod: Replay Buffer is off (Ctrl+Alt+F10 turns it on)");
+                p?.Message(MessageHud.MessageType.TopLeft, Active ? "Replay Mod: already recording" : $"Replay Mod: Replay Buffer is off ({Plugin.KeyText(Plugin.ReplayBufferToggleKey)} turns it on)");
                 return;
             }
             string current = _w.Path;

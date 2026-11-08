@@ -169,7 +169,9 @@ namespace ReplayMod
             }
             _tracked.Clear();
             _movers.Clear();
-            _hotbarKey = null;
+            _hotbarKey = _hudKey = null;
+            _selfId = ZDOID.None;
+            _center = p.transform.position;
             _dynamic.Clear();
             _bossesSeen.Clear();
             _maxStamina = _maxEitr = -1f;
@@ -184,6 +186,7 @@ namespace ReplayMod
             _nextPose = 0f;
             Active = true;
             Buffering = buffer;
+            RecordMap();
             if (buffer) return;
             _thumbDue = true;
             Plugin.Log.LogInfo($"recording to {path}");
@@ -230,9 +233,12 @@ namespace ReplayMod
                 Stop(); // logged out
                 return;
             }
-            if (Player.m_localPlayer == null) return; // dead, waiting to respawn: keep the clock running
+            // Dead and waiting to respawn, the world goes on (the body is removed, a ragdoll falls), so sampling
+            // goes on around where the player was. Before, the body stood in the replay until the respawn.
+            Player me = Player.m_localPlayer;
+            if (me) _center = me.transform.position;
             float t = Now;
-            if (Buffering && t >= Plugin.ReplayBufferMinutes.Value * 60f)
+            if (Buffering && me && t >= Plugin.ReplayBufferMinutes.Value * 60f) // a new file needs a live player
             {
                 RotateBuffer();
                 t = Now;
@@ -250,14 +256,18 @@ namespace ReplayMod
                 if (key) _nextKey = t + Plugin.KeyframeInterval.Value;
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 Sample(t, key);
-                Player me = Player.m_localPlayer;
-                if (me.GetMaxStamina() != _maxStamina || me.GetMaxEitr() != _maxEitr)
+                if (me)
                 {
-                    _maxStamina = me.GetMaxStamina();
-                    _maxEitr = me.GetMaxEitr();
-                    _w.Vitals(t, _maxStamina, _maxEitr);
+                    if (me.GetMaxStamina() != _maxStamina || me.GetMaxEitr() != _maxEitr)
+                    {
+                        _maxStamina = me.GetMaxStamina();
+                        _maxEitr = me.GetMaxEitr();
+                        _w.Vitals(t, _maxStamina, _maxEitr);
+                    }
+                    RecordHotbar(t, me);
+                    RecordHud(t, me);
+                    RecordSelf(t, me);
                 }
-                RecordHotbar(t, me);
                 float ms = (float)sw.Elapsed.TotalMilliseconds;
                 _sampleMs += ms;
                 _sampleMsMax = Mathf.Max(_sampleMsMax, ms);
@@ -284,7 +294,7 @@ namespace ReplayMod
 
         private static void Sample(float t, bool keyframe)
         {
-            Vector3 center = Player.m_localPlayer.transform.position;
+            Vector3 center = _center;
             Vector2s pz = ZoneSystem.GetZone(center);
             int ring = Plugin.StaticZoneRing.Value;
             float radius = Plugin.DynamicRadius.Value;
@@ -337,6 +347,65 @@ namespace ReplayMod
                 // of the zone ring stays as it was; only scenery destroyed inside the ring is removed.
                 if (tr.Dynamic || InRing(tr.Zone, pz, ring)) _w.Remove(t, id);
             }
+        }
+
+        private static Vector3 _center;
+        private static ZDOID _selfId;
+
+        private static void RecordSelf(float t, Player p)
+        {
+            ZDO z = p.GetComponent<ZNetView>()?.GetZDO();
+            if (z == null || z.m_uid == _selfId) return;
+            _selfId = z.m_uid;
+            _w.Self(t, _selfId);
+        }
+
+        // Food and status effects are kept on the owner only, like the inventory.
+        private static string _hudKey;
+        private static readonly List<StatusEffect> _seList = new List<StatusEffect>();
+        private static readonly List<FoodSlot> _foodSlots = new List<FoodSlot>();
+        private static readonly List<EffectSlot> _effectSlots = new List<EffectSlot>();
+        private static readonly StringBuilder _hudText = new StringBuilder();
+
+        private static void RecordHud(float t, Player p)
+        {
+            _seList.Clear();
+            p.GetSEMan().GetHUDStatusEffects(_seList);
+            _foodSlots.Clear();
+            _effectSlots.Clear();
+            _hudText.Clear();
+            foreach (Player.Food f in p.GetFoods())
+            {
+                _foodSlots.Add(new FoodSlot { Prefab = f.m_name, Time = f.m_time });
+                // What the HUD shows: the food and its whole seconds left.
+                _hudText.Append(f.m_name).Append(Mathf.FloorToInt(f.m_time / Game.m_foodRate)).Append(';');
+            }
+            foreach (StatusEffect se in _seList)
+            {
+                string text = se.GetIconText() ?? "";
+                _effectSlots.Add(new EffectSlot { Hash = se.NameHash(), Text = text });
+                _hudText.Append(se.NameHash()).Append(text).Append(';');
+            }
+            string key = _hudText.ToString();
+            if (key == _hudKey) return;
+            _hudKey = key;
+            _w.Hud(t, _foodSlots, _effectSlots);
+        }
+
+        private static readonly AccessTools.FieldRef<Minimap, System.Collections.BitArray> Explored = AccessTools.FieldRefAccess<Minimap, System.Collections.BitArray>("m_explored");
+        private static readonly AccessTools.FieldRef<Minimap, System.Collections.BitArray> ExploredOthers = AccessTools.FieldRefAccess<Minimap, System.Collections.BitArray>("m_exploredOthers");
+
+        private static void RecordMap()
+        {
+            Minimap map = Minimap.instance;
+            if (!map || Explored(map) == null) return;
+            byte[] Pack(System.Collections.BitArray bits)
+            {
+                var b = new byte[(bits.Length + 7) / 8];
+                bits.CopyTo(b, 0);
+                return b;
+            }
+            _w.Map(0f, Pack(Explored(map)), Pack(ExploredOthers(map)));
         }
 
         // A player's inventory isn't in the ZDO, so the hotbar is recorded on its own, whenever it changes.

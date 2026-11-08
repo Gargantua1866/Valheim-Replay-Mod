@@ -85,6 +85,7 @@ namespace ReplayMod
             if (fs == null) return;
 
             Index();
+            ReplayHud.Reset();
             CameraPath.Load(path);
             ReplayUI.NewReplay();
             _whitelist = Rpcs.ParseWhitelist(Rpcs.DefaultWhitelist + "," + Plugin.ExtraRpcs.Value);
@@ -288,6 +289,7 @@ namespace ReplayMod
                 EnvironmentChanged();
             }
             ApplyVitals(p);
+            ReplayHud.Update(p);
             ApplyHidden();
             if (Paused)
             {
@@ -576,18 +578,30 @@ namespace ReplayMod
         private static readonly AccessTools.FieldRef<Player, float> Eitr = AccessTools.FieldRefAccess<Player, float>("m_eitr");
         private static readonly AccessTools.FieldRef<Player, float> MaxEitr = AccessTools.FieldRefAccess<Player, float>("m_maxEitr");
 
+        // The recording player at the replay's time: respawning made a new player object.
+        public static RecId RecordedId()
+        {
+            int i = LowerBound(Data.Selves, T) - 1;
+            return i >= 0 ? Data.Selves[i].Id : new RecId(Data.Header.PlayerUser, Data.Header.PlayerId);
+        }
+
         public static Player RecordedPlayer()
         {
-            ZDO z = ZDOMan.instance.GetZDO(new RecId(Data.Header.PlayerUser, Data.Header.PlayerId).ToZdoId());
+            ZDO z = ZDOMan.instance.GetZDO(RecordedId().ToZdoId());
             ZNetView nv = z != null ? ZNetScene.instance.FindInstance(z) : null;
             return nv ? nv.GetComponent<Player>() : null;
         }
 
         private static void ApplyVitals(Player ghost)
         {
-            ZDO rec = ZDOMan.instance.GetZDO(new RecId(Data.Header.PlayerUser, Data.Header.PlayerId).ToZdoId());
+            ZDO rec = ZDOMan.instance.GetZDO(RecordedId().ToZdoId());
             ZDO own = ghost.GetComponent<ZNetView>()?.GetZDO();
-            if (rec == null || own == null) return;
+            if (own == null) return;
+            if (rec == null)
+            {
+                own.Set(ZDOVars.s_health, 0.01f); // dead, waiting to respawn
+                return;
+            }
             float maxHealth = rec.GetFloat(ZDOVars.s_maxHealth, own.GetFloat(ZDOVars.s_maxHealth, 25f));
             own.Set(ZDOVars.s_maxHealth, maxHealth);
             own.Set(ZDOVars.s_health, Mathf.Max(rec.GetFloat(ZDOVars.s_health, maxHealth), 0.01f)); // the ghost itself must not count as dead

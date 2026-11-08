@@ -79,7 +79,7 @@ namespace ReplayMod
             var partsHeaders = new Dictionary<RecId, byte[]>();
             var partsRest = new Dictionary<RecId, Dictionary<ushort, byte[]>>(); // where each moving part stands
             var movingAlive = new HashSet<RecId>();                // moving objects that exist right now
-            byte[] env = null, wind = null, vitals = null, hotbar = null;
+            byte[] env = null, wind = null, vitals = null, hotbar = null, hud = null, self = null, map = null;
             float? waterOffset = null;                             // wave clock minus recording time
             ReplayHeader header = null;
             Vector3? camPos = null;
@@ -115,6 +115,9 @@ namespace ReplayMod
                 if (wind != null) Put(RecType.Wind, 0f, wind);
                 if (vitals != null) Put(RecType.Vitals, 0f, vitals);
                 if (hotbar != null) Put(RecType.Hotbar, 0f, hotbar);
+                if (hud != null) Put(RecType.Hud, 0f, hud);
+                if (self != null) Put(RecType.Self, 0f, self);
+                if (map != null) Put(RecType.Map, 0f, map);
                 if (waterOffset.HasValue) Put(RecType.Water, 0f, BitConverter.GetBytes(waterOffset.Value + from));
             }
 
@@ -144,6 +147,9 @@ namespace ReplayMod
                     case RecType.Wind: wind = body; break;
                     case RecType.Vitals: vitals = body; break;
                     case RecType.Hotbar: hotbar = body; break;
+                    case RecType.Hud: hud = body; break;
+                    case RecType.Self: self = body; break;
+                    case RecType.Map: map = map ?? body; break; // the earliest map, explored on from there
                     case RecType.Water: waterOffset = BitConverter.ToSingle(body, 0) - t; break;
                     case RecType.Cam: camPos = new Vector3(BitConverter.ToSingle(body, 0), BitConverter.ToSingle(body, 4), BitConverter.ToSingle(body, 8)); break;
                     case RecType.Parts:
@@ -251,6 +257,20 @@ namespace ReplayMod
                 case RecType.Vitals:
                 case RecType.Wind: Copy(8); break;
                 case RecType.Water: Copy(4); break;
+                case RecType.Self: Copy(12); break;
+                case RecType.Map: Copy(Int()); Copy(Int()); break;
+                case RecType.Hud:
+                    for (int n = Int(); n > 0; n--)
+                    {
+                        Text();
+                        Copy(4);
+                    }
+                    for (int n = Int(); n > 0; n--)
+                    {
+                        Copy(4);
+                        Text();
+                    }
+                    break;
                 case RecType.Hotbar:
                     for (int n = Int(); n > 0; n--)
                     {
@@ -311,6 +331,9 @@ namespace ReplayMod
                     w.Write((byte)RecType.Env); w.Write(3f); w.Write(0.5f); w.Write("Clear"); w.Write((byte)RecType.Wind); w.Write(3f); w.Write(10f); w.Write(0.5f);
                     w.Write((byte)RecType.Water); w.Write(3f); w.Write(103f);
                     w.Write((byte)RecType.Hotbar); w.Write(3f); w.Write(1); w.Write((byte)2); w.Write("Club"); w.Write(1); w.Write(1); w.Write(0); w.Write(50f); w.Write(true);
+                    w.Write((byte)RecType.Self); w.Write(3f); w.Write(1L); w.Write(7u);
+                    w.Write((byte)RecType.Hud); w.Write(3f); w.Write(1); w.Write("CookedMeat"); w.Write(600f); w.Write(1); w.Write(123); w.Write("5m");
+                    w.Write((byte)RecType.Map); w.Write(3f); w.Write(2); w.Write(new byte[] { 1, 2 }); w.Write(2); w.Write(new byte[] { 3, 4 });
                     Zdo(w, 6f, 2, true);
                 });
                 Source(b, w =>
@@ -328,7 +351,10 @@ namespace ReplayMod
                     && d.Envs.Count == 1 && d.Envs[0].T == 0f && d.Winds.Count == 1 && d.Winds[0].T == 0f && d.Winds[0].Pos.x == 10f && d.Duration <= 6f
                     && d.Waters.Count == 1 && d.Waters[0].T == 0f && d.Waters[0].F == 104f
                     && d.Hotbars.Count == 1 && d.Hotbars[0].T == 0f && d.Hotbars[0].Slots.Length == 1 && d.Hotbars[0].Slots[0].Prefab == "Club"
-                    && d.Hotbars[0].Slots[0].Slot == 2 && d.Hotbars[0].Slots[0].Durability == 50f && d.Hotbars[0].Slots[0].Equipped;
+                    && d.Hotbars[0].Slots[0].Slot == 2 && d.Hotbars[0].Slots[0].Durability == 50f && d.Hotbars[0].Slots[0].Equipped
+                    && d.Selves.Count == 1 && d.Selves[0].T == 0f && d.Selves[0].Id.Id == 7
+                    && d.Huds.Count == 1 && d.Huds[0].Foods[0].Prefab == "CookedMeat" && d.Huds[0].Effects[0].Hash == 123 && d.Huds[0].Effects[0].Text == "5m"
+                    && d.MapExplored != null && d.MapExplored.Length == 2 && d.MapOthers[1] == 4;
                 if (!ok) Plugin.Log.LogError("Clipper self-check FAILED: a cut recording doesn't match its source");
             }
             catch (Exception e)

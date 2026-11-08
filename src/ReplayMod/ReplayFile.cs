@@ -9,7 +9,7 @@ namespace ReplayMod
     // File layout: a Deflate stream holding the header, then records in time order, then End.
     // Every ZDO record carries the object's full state (ZDO.Serialize plus position), so seeking is
     // "latest record at or before t" per object.
-    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, End = 255 }
+    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, Hud = 16, Self = 17, Map = 18, End = 255 }
 
     // Timeline markers: things worth jumping to.
     internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill }
@@ -234,6 +234,44 @@ namespace ReplayMod
             Stats.OtherBytes += Commit();
         }
 
+        // The recording player's food and status effects, written when what the HUD shows changes.
+        public void Hud(float t, List<FoodSlot> foods, List<EffectSlot> effects)
+        {
+            var w = Begin(RecType.Hud, t);
+            w.Write(foods.Count);
+            foreach (FoodSlot f in foods)
+            {
+                w.Write(f.Prefab);
+                w.Write(f.Time);
+            }
+            w.Write(effects.Count);
+            foreach (EffectSlot e in effects)
+            {
+                w.Write(e.Hash);
+                w.Write(e.Text);
+            }
+            Stats.OtherBytes += Commit();
+        }
+
+        // The recording player's ZDO, each time it's a new one (respawning makes a new player).
+        public void Self(float t, ZDOID id)
+        {
+            var w = Begin(RecType.Self, t);
+            w.WriteId(id);
+            Stats.OtherBytes += Commit();
+        }
+
+        // The minimap's explored pixels at the start, packed 8 to a byte.
+        public void Map(float t, byte[] explored, byte[] others)
+        {
+            var w = Begin(RecType.Map, t);
+            w.Write(explored.Length);
+            w.Write(explored);
+            w.Write(others.Length);
+            w.Write(others);
+            Stats.OtherBytes += Commit();
+        }
+
         public void Marker(float t, MarkerKind kind, Vector3 pos, string text)
         {
             var w = Begin(RecType.Marker, t);
@@ -345,6 +383,25 @@ namespace ReplayMod
         public bool Equipped;
     }
 
+    internal struct FoodSlot
+    {
+        public string Prefab;
+        public float Time;
+    }
+
+    internal struct EffectSlot
+    {
+        public int Hash;
+        public string Text;
+    }
+
+    internal class HudSample
+    {
+        public float T;
+        public FoodSlot[] Foods;
+        public EffectSlot[] Effects;
+    }
+
     internal class HotbarSample
     {
         public float T;
@@ -383,6 +440,9 @@ namespace ReplayMod
         public readonly List<ReplayEvent> Winds = new List<ReplayEvent>(); // F = intensity, Pos.x = angle in degrees
         public readonly List<ReplayEvent> Waters = new List<ReplayEvent>(); // F = the game's wave clock (recordings from 0.0.27)
         public readonly List<HotbarSample> Hotbars = new List<HotbarSample>(); // recordings from 0.0.28
+        public readonly List<HudSample> Huds = new List<HudSample>();          // the rest from 0.0.29
+        public readonly List<ReplayEvent> Selves = new List<ReplayEvent>();    // Id = the recording player from then on
+        public byte[] MapExplored, MapOthers;                                   // the first map record: the start
         public readonly List<ReplayEvent> Markers = new List<ReplayEvent>(); // F = MarkerKind, S = text
         public readonly List<ReplayEvent> Vitals = new List<ReplayEvent>(); // the recorder's maximums: F = stamina, Pos.x = eitr
         public readonly Dictionary<RecId, List<ReplayEvent>> HiFi = new Dictionary<RecId, List<ReplayEvent>>();
@@ -458,6 +518,29 @@ namespace ReplayMod
                                 };
                             }
                             d.Hotbars.Add(new HotbarSample { T = e.T, Slots = slots });
+                            break;
+                        }
+                        case RecType.Hud:
+                        {
+                            var foods = new FoodSlot[r.ReadInt32()];
+                            for (int i = 0; i < foods.Length; i++) foods[i] = new FoodSlot { Prefab = r.ReadString(), Time = r.ReadSingle() };
+                            var effects = new EffectSlot[r.ReadInt32()];
+                            for (int i = 0; i < effects.Length; i++) effects[i] = new EffectSlot { Hash = r.ReadInt32(), Text = r.ReadString() };
+                            d.Huds.Add(new HudSample { T = e.T, Foods = foods, Effects = effects });
+                            break;
+                        }
+                        case RecType.Self:
+                            e.Id = r.ReadId();
+                            d.Selves.Add(e);
+                            break;
+                        case RecType.Map:
+                        {
+                            byte[] explored = r.ReadBytes(r.ReadInt32()), others = r.ReadBytes(r.ReadInt32());
+                            if (d.MapExplored == null)
+                            {
+                                d.MapExplored = explored;
+                                d.MapOthers = others;
+                            }
                             break;
                         }
                         case RecType.Vitals:

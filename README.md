@@ -4,7 +4,7 @@ Replay Mod records everything that happens around you in Valheim. Open the recor
 
 ## Features
 
-- Record in single player, as host or as client, by hand or with a Replay Buffer that saves the last few minutes on a key press.
+- Record in single player or multiplayer, as host or as client, by hand or with a Replay Buffer that saves the last few minutes on a key press.
 - Fly a free camera with FOV and roll, or follow, mount, orbit or look at any character, vehicle or projectile.
 - Build camera paths from keys, with easing, per-key FOV, roll, replay speed, time of day and weather.
 - Change the replay's speed, time of day, weather, wind, depth of field and picture settings.
@@ -28,7 +28,7 @@ A recording holds:
 - players, creatures, ships and projectiles the game has loaded around you
 - scenery (trees, rocks, buildings, terrain edits) in the 3x3 zones around you
 - attacks and effects
-- your hotbar, shown in the replay when the game HUD is on
+- your hotbar, food, status effects and explored map, shown in the replay when the game HUD is on
 - your camera, the time of day, the weather, the wind and the waves
 
 Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\replays`. Each `.replay` file has a `.json` next to it with size and timing statistics.

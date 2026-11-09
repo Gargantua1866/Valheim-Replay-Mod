@@ -25,6 +25,7 @@ Copy-Item (Join-Path $root "README.md") $stage
 Copy-Item (Join-Path $root "CHANGELOG.md") $stage
 [ordered]@{
     name           = "Replay_Mod"
+    author         = $Author # Gale shows this for a zip imported locally; a store install shows the team name
     version_number = $version
     website_url    = "https://github.com/Gargantua1866/Valheim-Replay-Mod"
     description    = "Records gameplay and plays it back in a separate world, where you fly a free camera, build camera paths and export MP4 video."

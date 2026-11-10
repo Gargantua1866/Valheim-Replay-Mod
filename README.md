@@ -2,6 +2,7 @@
 
 Replay Mod records everything that happens around you in Valheim. Open the recording afterward in a separate replay world, fly a free camera through it, build camera paths and export the result as an MP4.
 
+Showcase video
 [![Replay Mod showcase video](https://img.youtube.com/vi/tQ8CQNI6xOA/maxresdefault.jpg)](https://youtu.be/tQ8CQNI6xOA)
 
 ## Features

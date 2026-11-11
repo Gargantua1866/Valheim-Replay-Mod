@@ -283,6 +283,7 @@ namespace ReplayMod
                 Vector3 wind = EnvMan.instance.GetWindDir();
                 _w.Wind(t, Mathf.Atan2(wind.x, wind.z) * Mathf.Rad2Deg, EnvMan.instance.GetWindIntensity());
                 _w.Water(t, ZNet.instance.GetWrappedDayTimeSeconds());
+                _w.NetTime(t, ZNet.instance.GetTimeSeconds());
             }
             if (t >= _nextStats)
             {

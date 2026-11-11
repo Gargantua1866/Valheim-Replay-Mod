@@ -9,7 +9,7 @@ namespace ReplayMod
     // File layout: a Deflate stream holding the header, then records in time order, then End.
     // Every ZDO record carries the object's full state (ZDO.Serialize plus position), so seeking is
     // "latest record at or before t" per object.
-    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, Hud = 16, Self = 17, Map = 18, End = 255 }
+    internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, Hud = 16, Self = 17, Map = 18, NetTime = 19, End = 255 }
 
     // Timeline markers: things worth jumping to.
     internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill }
@@ -20,9 +20,10 @@ namespace ReplayMod
     internal class ReplayHeader
     {
         public const string Magic = "MUNINN"; // the mod's old name; existing recordings start with it
-        // 2 added the pose lane, 3 vehicle parts, 4 markers, 5 vitals, 6 wind, 7 waves, hotbar, HUD, player and map.
+        // 2 added the pose lane, 3 vehicle parts, 4 markers, 5 vitals, 6 wind, 7 waves, hotbar, HUD, player and map,
+        // 8 the network clock.
         // Older ones still read; a newer one is refused, since its new record types can't be skipped.
-        public const int FormatVersion = 7;
+        public const int FormatVersion = 8;
 
         public int Version = FormatVersion;
         public string GameVersion = "";
@@ -217,6 +218,13 @@ namespace ReplayMod
         {
             var w = Begin(RecType.Water, t);
             w.Write(waterTime);
+            Stats.OtherBytes += Commit();
+        }
+
+        public void NetTime(float t, double seconds)
+        {
+            var w = Begin(RecType.NetTime, t);
+            w.Write(seconds);
             Stats.OtherBytes += Commit();
         }
 
@@ -443,6 +451,7 @@ namespace ReplayMod
         public readonly List<ReplayEvent> Envs = new List<ReplayEvent>();
         public readonly List<ReplayEvent> Winds = new List<ReplayEvent>(); // F = intensity, Pos.x = angle in degrees
         public readonly List<ReplayEvent> Waters = new List<ReplayEvent>(); // F = the game's wave clock (recordings from 0.0.27)
+        public readonly List<(float T, double Net)> NetTimes = new List<(float, double)>(); // ZNet.GetTimeSeconds (from 0.1.1)
         public readonly List<HotbarSample> Hotbars = new List<HotbarSample>(); // recordings from 0.0.28
         public readonly List<HudSample> Huds = new List<HudSample>();          // the rest from 0.0.29
         public readonly List<ReplayEvent> Selves = new List<ReplayEvent>();    // Id = the recording player from then on
@@ -509,6 +518,9 @@ namespace ReplayMod
                         case RecType.Water:
                             e.F = r.ReadSingle();
                             d.Waters.Add(e);
+                            break;
+                        case RecType.NetTime:
+                            d.NetTimes.Add((e.T, r.ReadDouble()));
                             break;
                         case RecType.Hotbar:
                         {

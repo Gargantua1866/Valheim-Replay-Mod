@@ -378,6 +378,16 @@ namespace ReplayMod
             }
         }
 
+        // The network clock comes from the recording too (see RecordedNetTime).
+        [HarmonyPatch(typeof(ZNet), nameof(ZNet.GetTimeSeconds))]
+        private static class RecordedNetTime
+        {
+            private static void Postfix(ref double __result)
+            {
+                if (ReplaySession.RecordedNetTime(out double time)) __result = time;
+            }
+        }
+
         // The wave clock comes from the recording (see RecordedWaterTime). The game's own smoothing would
         // lag after a seek and doesn't follow pause or slow motion.
         [HarmonyPatch(typeof(WaterVolume), "UpdateWaterTime")]

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Recordings now hold the game's network clock, and replays run on it. Mods that start an animation from a time stored on an object, such as tricks on vehicles, now play it in replays as it was recorded. Recordings made before this version don't have the clock.
+
 ## 0.1.0
 
 First public release.

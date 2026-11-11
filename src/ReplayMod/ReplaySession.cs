@@ -511,6 +511,10 @@ namespace ReplayMod
             {
                 Plugin.Log.LogError("motion curve or wave clock self-check FAILED");
             }
+            // Between samples, past both ends, and across a sleep's jump.
+            var net = new List<(float T, double Net)> { (1f, 5000000.0), (2f, 5000001.0), (3f, 5004000.0) };
+            if (NetTimeAt(net, 1.5f) != 5000000.5 || NetTimeAt(net, 0f) != 4999999.0 || NetTimeAt(net, 4f) != 5004001.0 || NetTimeAt(net, 2.5f) != 5002000.5)
+                Plugin.Log.LogError("network clock self-check FAILED");
         }
         private static int _seekFrame = -100;
         public static bool SnapBars => Active && Ready && (Paused || Time.frameCount - _seekFrame < 5);
@@ -994,6 +998,30 @@ namespace ReplayMod
             ReplayEvent a = waters[Mathf.Clamp(next - 1, 0, waters.Count - 1)], b = waters[Mathf.Min(next, waters.Count - 1)];
             // At the daily wrap the two aren't comparable, and past either end there's only one.
             return b.T > a.T && b.F >= a.F ? Mathf.Lerp(a.F, b.F, Mathf.Clamp01((t - a.T) / (b.T - a.T))) : a.F + t - a.T;
+        }
+
+        // The network clock at the replay's time. Mods keep start times on ZDOs in it (a vehicle trick's start,
+        // for one) and play from them, but the replay world's clock is another one.
+        internal static bool RecordedNetTime(out double time)
+        {
+            time = 0.0;
+            if (!Active || !Ready || Data.NetTimes.Count == 0) return false;
+            time = NetTimeAt(Data.NetTimes, T);
+            return true;
+        }
+
+        internal static double NetTimeAt(List<(float T, double Net)> times, float t)
+        {
+            int next = 0, hi = times.Count;
+            while (next < hi)
+            {
+                int mid = (next + hi) / 2;
+                if (times[mid].T <= t) next = mid + 1; else hi = mid;
+            }
+            var a = times[Mathf.Clamp(next - 1, 0, times.Count - 1)];
+            var b = times[Mathf.Min(next, times.Count - 1)];
+            // Past either end there's only one; a sleep jumps the clock between two.
+            return b.T > a.T && b.Net >= a.Net ? a.Net + (b.Net - a.Net) * Mathf.Clamp01((t - a.T) / (b.T - a.T)) : a.Net + (t - a.T);
         }
 
         // The recording player's hotbar at the replay's time, as an inventory the hotbar can draw.

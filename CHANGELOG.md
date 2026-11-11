@@ -3,6 +3,7 @@
 ## 0.1.2
 
 - Ctrl+F8 puts a mark on the timeline while recording or buffering. Change it with `MarkShortcut` in the config.
+- Recording costs less: the file is compressed on a background thread, characters standing still write nothing at the physics rate, and the scan for changed objects does less work.
 
 ## 0.1.1
 

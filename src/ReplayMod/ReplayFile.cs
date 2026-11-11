@@ -122,9 +122,18 @@ namespace ReplayMod
 
     internal class ReplayWriter : IDisposable
     {
+        // Records collect in _chunk on the main thread; a worker thread compresses full chunks into the file,
+        // so the game's frame never waits on deflate.
         private readonly FileStream _file;
         private readonly DeflateStream _deflate;
+        private readonly MemoryStream _chunk = new MemoryStream(ChunkSize * 2);
         private readonly BinaryWriter _w;
+        private readonly System.Collections.Concurrent.BlockingCollection<byte[]> _queue =
+            new System.Collections.Concurrent.BlockingCollection<byte[]>(64); // at most ~4 MB waiting; then the game waits
+        private readonly System.Threading.Thread _worker;
+        private Exception _failed;
+        private long _compressed;
+        private const int ChunkSize = 1 << 16;
         private readonly MemoryStream _rec = new MemoryStream();
         private readonly BinaryWriter _rw;
         public readonly RecordStats Stats = new RecordStats();
@@ -135,12 +144,39 @@ namespace ReplayMod
             Path = path;
             _file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
             _deflate = new DeflateStream(_file, System.IO.Compression.CompressionLevel.Optimal);
-            _w = new BinaryWriter(new BufferedStream(_deflate, 1 << 16));
+            _w = new BinaryWriter(_chunk);
             _rw = new BinaryWriter(_rec);
             header.Write(_w);
+            _worker = new System.Threading.Thread(Compress) { IsBackground = true, Name = "Replay Mod writer" };
+            _worker.Start();
         }
 
-        public long CompressedBytes => _file.Length;
+        public long CompressedBytes => System.Threading.Interlocked.Read(ref _compressed);
+
+        private void Compress()
+        {
+            try
+            {
+                foreach (byte[] chunk in _queue.GetConsumingEnumerable())
+                {
+                    _deflate.Write(chunk, 0, chunk.Length);
+                    System.Threading.Interlocked.Exchange(ref _compressed, _file.Position);
+                }
+            }
+            catch (Exception e)
+            {
+                _failed = e;
+                // Keep taking chunks so the game never blocks on a full queue.
+                foreach (byte[] _ in _queue.GetConsumingEnumerable()) { }
+            }
+        }
+
+        private void Submit()
+        {
+            if (_chunk.Length == 0) return;
+            _queue.Add(_chunk.ToArray());
+            _chunk.SetLength(0);
+        }
 
         private BinaryWriter Begin(RecType type, float t)
         {
@@ -154,6 +190,7 @@ namespace ReplayMod
         {
             _rw.Flush();
             _w.Write(_rec.GetBuffer(), 0, (int)_rec.Length);
+            if (_chunk.Length >= ChunkSize) Submit();
             return _rec.Length;
         }
 
@@ -368,8 +405,11 @@ namespace ReplayMod
         public void Dispose()
         {
             _w.Write((byte)RecType.End);
-            _w.Flush();
-            _w.Dispose();
+            Submit();
+            _queue.CompleteAdding();
+            _worker.Join();
+            _deflate.Dispose(); // also closes the file
+            if (_failed != null) throw new IOException($"writing {Path} failed", _failed);
         }
     }
 

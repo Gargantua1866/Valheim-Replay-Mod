@@ -18,6 +18,7 @@ namespace ReplayMod
         {
             public uint Rev;
             public bool Dynamic;
+            public int Seen;  // the sample that last found it
             public Vector2s Zone;
         }
 
@@ -36,7 +37,7 @@ namespace ReplayMod
         private static float _t0, _nextTick, _nextKey, _nextEnv, _nextStats;
         private static readonly Dictionary<ZDOID, Tracked> _tracked = new Dictionary<ZDOID, Tracked>();
         private static readonly Dictionary<ZDOID, bool> _dynamic = new Dictionary<ZDOID, bool>();
-        private static readonly HashSet<ZDOID> _seen = new HashSet<ZDOID>();
+        private static int _sampleStamp;
         private static readonly List<ZDOID> _gone = new List<ZDOID>();
         private static readonly Dictionary<int, int> _rpcCounts = new Dictionary<int, int>();
         private static readonly ZPackage _pkg = new ZPackage();
@@ -185,6 +186,7 @@ namespace ReplayMod
             }
             _tracked.Clear();
             _movers.Clear();
+            _still.Clear();
             _hotbarKey = _hudKey = null;
             _selfId = ZDOID.None;
             _center = p.transform.position;
@@ -197,6 +199,8 @@ namespace ReplayMod
             _nextStats = 10f;
             _sampleMs = _sampleMsMax = 0f;
             _samples = 0;
+            _tickCost = _fixedCost = 0;
+            _ticks = _fixedSteps = 0;
             _boneSource = null;
             _partsRoot = null;
             _nextPose = 0f;
@@ -242,7 +246,21 @@ namespace ReplayMod
             Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, "Replay Mod: recording saved");
         }
 
+        // What the recorder costs per frame and per physics step, for the log every 10 s.
+        private static long _tickCost, _fixedCost;
+        private static int _ticks, _fixedSteps;
+        private static double Ms(long ticks) => ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+
         public static void Tick()
+        {
+            if (!Active) return;
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            TickRecording();
+            _tickCost += System.Diagnostics.Stopwatch.GetTimestamp() - start;
+            _ticks++;
+        }
+
+        private static void TickRecording()
         {
             if (!Active) return;
             if (ZNetScene.instance == null || ZDOMan.instance == null)
@@ -306,7 +324,9 @@ namespace ReplayMod
             {
                 _nextStats = t + 10f;
                 var s = _w.Stats;
-                Plugin.Log.LogInfo($"rec {t:0}s: {_tracked.Count} tracked, raw {s.Total / 1048576f:0.00} MB, file {_w.CompressedBytes / 1048576f:0.00} MB, sample {_sampleMs / Mathf.Max(1, _samples):0.00} ms avg");
+                Plugin.Log.LogInfo($"rec {t:0}s: {_tracked.Count} tracked, raw {s.Total / 1048576f:0.00} MB, file {_w.CompressedBytes / 1048576f:0.00} MB, sample {_sampleMs / Mathf.Max(1, _samples):0.00} ms avg, update {Ms(_tickCost) / Mathf.Max(1, _ticks):0.000} ms/frame, physics {Ms(_fixedCost) / Mathf.Max(1, _fixedSteps):0.000} ms/step");
+                _tickCost = _fixedCost = 0;
+                _ticks = _fixedSteps = 0;
             }
         }
 
@@ -318,23 +338,23 @@ namespace ReplayMod
             float radius = Plugin.DynamicRadius.Value;
             float r2 = radius > 0f ? radius * radius : float.MaxValue;
             float leave2 = radius > 0f ? (radius + 10f) * (radius + 10f) : float.MaxValue; // no flapping at the edge
-            _seen.Clear();
+            int stamp = ++_sampleStamp;
             foreach (var kv in Instances(ZNetScene.instance))
             {
                 ZDO z = kv.Key;
                 ZNetView nv = kv.Value;
                 if (z == null || nv == null) continue;
                 ZDOID id = z.m_uid;
-                bool dyn = IsDynamic(id, z, nv);
+                bool known = _tracked.TryGetValue(id, out Tracked tr);
+                bool dyn = known ? tr.Dynamic : IsDynamic(id, z, nv);
                 Vector3 pos = z.GetPosition();
                 Vector2s zone = ZoneSystem.GetZone(pos);
                 // Moving objects already tracked stay until 10 m past the radius: dropping and re-adding one
                 // at the edge rebuilt it in playback each time (corpses fell again, creatures popped).
-                if (dyn ? (pos - center).sqrMagnitude > (_tracked.ContainsKey(id) ? leave2 : r2) : !InRing(zone, pz, ring)) continue;
-                _seen.Add(id);
-                if (!_tracked.TryGetValue(id, out Tracked tr))
+                if (dyn ? (pos - center).sqrMagnitude > (known ? leave2 : r2) : !InRing(zone, pz, ring)) continue;
+                if (!known)
                 {
-                    _tracked[id] = tr = new Tracked { Rev = z.DataRevision, Dynamic = dyn, Zone = zone };
+                    _tracked[id] = tr = new Tracked { Rev = z.DataRevision, Dynamic = dyn, Zone = zone, Seen = stamp };
                     Character boss = dyn ? nv.GetComponent<Character>() : null;
                     if (boss && boss.IsBoss() && _bossesSeen.Add(id)) Mark(MarkerKind.Boss, pos, $"Boss: {Localization.instance.Localize(boss.m_name)}");
                     WriteZdo(t, z, dyn ? ZdoFlags.Dynamic : ZdoFlags.None);
@@ -343,8 +363,10 @@ namespace ReplayMod
                         _movers[id] = new Mover { View = nv, Body = nv.GetComponent<Rigidbody>(), Time = -1f };
                     }
                 }
-                else if (tr.Rev != z.DataRevision || (dyn && keyframe))
+                else
                 {
+                    tr.Seen = stamp;
+                    if (tr.Rev == z.DataRevision && !(dyn && keyframe)) continue;
                     bool changed = tr.Rev != z.DataRevision;
                     tr.Rev = z.DataRevision;
                     tr.Zone = zone;
@@ -354,7 +376,7 @@ namespace ReplayMod
             _gone.Clear();
             foreach (var kv in _tracked)
             {
-                if (!_seen.Contains(kv.Key)) _gone.Add(kv.Key);
+                if (kv.Value.Seen != stamp) _gone.Add(kv.Key);
             }
             foreach (ZDOID id in _gone)
             {
@@ -481,6 +503,15 @@ namespace ReplayMod
 
         public static void FixedTick()
         {
+            if (!Active) return;
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            FixedTickRecording();
+            _fixedCost += System.Diagnostics.Stopwatch.GetTimestamp() - start;
+            _fixedSteps++;
+        }
+
+        private static void FixedTickRecording()
+        {
             if (!Active || !Plugin.RecordHiFi.Value || Player.m_localPlayer == null) return;
             float t = Now;
             Player me = Player.m_localPlayer;
@@ -489,13 +520,45 @@ namespace ReplayMod
             SampleMovers(t, true);
             foreach (Character c in Character.GetAllCharacters())
             {
-                if (!c || (c.transform.position - center).sqrMagnitude > r2) continue;
+                if (!c) continue;
+                c.transform.GetPositionAndRotation(out Vector3 pos, out Quaternion rot);
+                if ((pos - center).sqrMagnitude > r2) continue;
                 if (c == me && _seatedOn != null) continue; // written with the vehicle
-                ZDO z = c.GetComponent<ZNetView>()?.GetZDO();
+                ZNetView nv = CharacterView(c);
+                ZDO z = nv ? nv.GetZDO() : null;
                 if (z == null || !_tracked.ContainsKey(z.m_uid)) continue;
-                _w.HiFi(t, z.m_uid, c.transform.position, c.transform.rotation);
+                // Standing still writes nothing. On moving again, the held place goes in first at the last step,
+                // so playback doesn't glide from it across the pause.
+                if (_still.TryGetValue(z.m_uid, out Still s))
+                {
+                    if ((pos - s.Pos).sqrMagnitude < 1e-6f && Quaternion.Angle(rot, s.Rot) < 0.05f)
+                    {
+                        s.Held = true;
+                        s.T = t;
+                        continue;
+                    }
+                    if (s.Held) _w.HiFi(s.T, z.m_uid, s.Pos, s.Rot);
+                }
+                else _still[z.m_uid] = s = new Still();
+                s.Pos = pos;
+                s.Rot = rot;
+                s.T = t;
+                s.Held = false;
+                _w.HiFi(t, z.m_uid, pos, rot);
             }
+            if (_still.Count > 4 * _tracked.Count + 64) _still.Clear(); // characters long gone
         }
+
+        private class Still
+        {
+            public Vector3 Pos;
+            public Quaternion Rot;
+            public float T;
+            public bool Held;
+        }
+
+        private static readonly Dictionary<ZDOID, Still> _still = new Dictionary<ZDOID, Still>();
+        private static readonly AccessTools.FieldRef<Character, ZNetView> CharacterView = AccessTools.FieldRefAccess<Character, ZNetView>("m_nview");
 
         // High-rate lane for moving objects that aren't characters, whose ZDO records come only 20 times a
         // second. A body this machine simulates is exact at each physics step. Anything else moves once a

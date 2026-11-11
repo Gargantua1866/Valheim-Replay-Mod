@@ -50,16 +50,6 @@ namespace ReplayMod
         // A small picture of this frame for the replay list, without the overlays.
         public static IEnumerator Thumbnail(string replayPath)
         {
-            string jpg = Path.ChangeExtension(replayPath, ".jpg");
-            return Thumbnail(bytes =>
-            {
-                try { File.WriteAllBytes(jpg, bytes); }
-                catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { Plugin.Log.LogWarning($"thumbnail for {replayPath}: {e.Message}"); }
-            });
-        }
-
-        public static IEnumerator Thumbnail(Action<byte[]> done)
-        {
             _shotFrame = Time.frameCount;
             yield return new WaitForEndOfFrame();
             RenderTexture small = null;
@@ -74,7 +64,11 @@ namespace ReplayMod
                 RenderTexture.active = small;
                 thumb = new Texture2D(width, height, TextureFormat.RGB24, false);
                 thumb.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                done(thumb.EncodeToJPG(80));
+                File.WriteAllBytes(Path.ChangeExtension(replayPath, ".jpg"), thumb.EncodeToJPG(80));
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                Plugin.Log.LogWarning($"thumbnail for {replayPath}: {e.Message}");
             }
             finally
             {

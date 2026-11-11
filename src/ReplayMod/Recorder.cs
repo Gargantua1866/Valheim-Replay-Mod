@@ -21,27 +21,18 @@ namespace ReplayMod
             public Vector2s Zone;
         }
 
-        // A recording and the Replay Buffer can run together. One set of samples feeds both: records go to the
-        // recording, which copies each one into the buffer's file (ReplayWriter.Tee).
-        public static bool Active => _rec != null || _buf != null;
-        public static bool Recording => _rec != null;
+        public static bool Active { get; private set; }
         // Replay buffer: recording quietly into rolling files, kept only if the save key is pressed.
-        public static bool Buffering => _buf != null;
-        private static ReplayWriter _rec, _buf;
-        private static ReplayWriter _w => _rec ?? _buf;
+        public static bool Buffering { get; private set; }
         private static string _previousBuffer;
         private static float _previousLength;
         private static int _bufferFile;
         private static bool _thumbDue;
-        private static int _marks;
-        // Small pictures taken every few seconds while buffering, so a saved buffer gets the one from its start.
-        private static readonly List<(float T, byte[] Jpg)> _bufferThumbs = new List<(float, byte[])>();
-        private static float _nextBufferThumb;
-        private const float BufferThumbEvery = 10f;
 
         private static readonly AccessTools.FieldRef<ZNetScene, Dictionary<ZDO, ZNetView>> Instances =
             AccessTools.FieldRefAccess<ZNetScene, Dictionary<ZDO, ZNetView>>("m_instances");
 
+        private static ReplayWriter _w;
         private static float _t0, _nextTick, _nextKey, _nextEnv, _nextStats;
         private static readonly Dictionary<ZDOID, Tracked> _tracked = new Dictionary<ZDOID, Tracked>();
         private static readonly Dictionary<ZDOID, bool> _dynamic = new Dictionary<ZDOID, bool>();
@@ -54,7 +45,6 @@ namespace ReplayMod
         private static float _sampleMs, _sampleMsMax;
         private static int _samples;
 
-        // One clock for the whole session; each file stores times from its own start.
         private static float Now => Time.time - _t0;
         private static readonly System.Reflection.MethodInfo SetCrouch = AccessTools.Method(typeof(Player), "SetCrouch");
 
@@ -64,7 +54,9 @@ namespace ReplayMod
             if (Active) _w.Marker(Now, kind, pos, text);
         }
 
-        // The mark key: a tick on the timeline here, in the recording and the buffer alike.
+        private static int _marks;
+
+        // The mark key: a tick on the timeline here. Numbered per recording (a buffer file counts on).
         public static void MarkByHand()
         {
             Player p = Player.m_localPlayer;
@@ -80,46 +72,24 @@ namespace ReplayMod
 
         public static void Toggle()
         {
-            if (Recording) StopRecording();
-            else StartRecording();
+            if (Active && !Buffering) Stop();
+            else
+            {
+                // A manual recording takes over; the buffer starts again after it.
+                if (Buffering) Stop();
+                Start();
+            }
             // Ctrl is also the crouch key, and it toggled crouch just before the record key arrived.
             if (Player.m_localPlayer) SetCrouch.Invoke(Player.m_localPlayer, new object[] { false });
         }
 
-        public static void StartRecording()
-        {
-            if (Recording) return;
-            ReplayWriter w = Open(Path.Combine(Plugin.ReplayDir, $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{Sanitize(ZNet.World?.m_name ?? "")}.replay"));
-            if (w == null) return;
-            _rec = w;
-            _rec.Tee = _buf;
-            _rpcCounts.Clear();
-            _sampleMs = _sampleMsMax = 0f;
-            _samples = 0;
-            _nextStats = Now + 10f;
-            _thumbDue = true;
-            Restart();
-            Plugin.Log.LogInfo($"recording to {w.Path}");
-            Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "Replay Mod: recording");
-        }
+        public static void Start() => Begin(Path.Combine(Plugin.ReplayDir, $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{Sanitize(ZNet.World?.m_name ?? "")}.replay"), false);
 
         public static void StartBuffer()
         {
-            if (Buffering) return;
             _previousBuffer = null;
             _previousLength = 0f;
-            _bufferThumbs.Clear();
-            if (OpenBuffer()) _nextBufferThumb = Now + 1f;
-        }
-
-        private static bool OpenBuffer()
-        {
-            ReplayWriter w = Open(NextBufferFile());
-            if (w == null) return false;
-            _buf = w;
-            if (_rec != null) _rec.Tee = _buf;
-            Restart();
-            return true;
+            Begin(NextBufferFile(), true);
         }
 
         private static string NextBufferFile()
@@ -137,25 +107,17 @@ namespace ReplayMod
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { Plugin.Log.LogWarning($"couldn't delete {path}: {e.Message}"); }
         }
 
-        // Closes the buffer's file and gives back its path and length.
-        private static string CloseBuffer(out float length)
-        {
-            string path = _buf.Path;
-            length = Now - _buf.Start;
-            if (_rec != null) _rec.Tee = null;
-            Close(_buf);
-            _buf = null;
-            return path;
-        }
-
         // The file only ever holds as long as the buffer asks for, so the last two always cover it.
         private static void RotateBuffer()
         {
-            string finished = CloseBuffer(out float length);
+            string finished = _w.Path;
+            float length = Now;
+            CloseWriter();
+            Active = false;
             DeleteBufferFile(_previousBuffer);
             _previousBuffer = finished;
             _previousLength = length;
-            OpenBuffer();
+            Begin(NextBufferFile(), true);
         }
 
         // Replay buffer: cuts the last minutes out of the buffer files on a worker thread, and goes on buffering.
@@ -164,63 +126,36 @@ namespace ReplayMod
             Player p = Player.m_localPlayer;
             if (!Buffering)
             {
-                p?.Message(MessageHud.MessageType.TopLeft, $"Replay Mod: Replay Buffer is off ({Plugin.KeyText(Plugin.ReplayBufferToggleKey)} turns it on)");
+                p?.Message(MessageHud.MessageType.TopLeft, Active ? "Replay Mod: already recording" : $"Replay Mod: Replay Buffer is off ({Plugin.KeyText(Plugin.ReplayBufferToggleKey)} turns it on)");
                 return;
             }
+            string current = _w.Path;
+            float length = Now;
             string previous = _previousBuffer;
-            string current = CloseBuffer(out float length);
             float total = _previousLength + length;
-            float keep = Mathf.Min(total, Plugin.ReplayBufferMinutes.Value * 60f);
+            string world = Sanitize(ZNet.World?.m_name ?? "");
+            CloseWriter();
+            Active = Buffering = false;
             _previousBuffer = null;
             string[] sources = previous != null ? new[] { previous, current } : new[] { current };
-            string dest = Path.Combine(Plugin.ReplayDir, $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{Sanitize(ZNet.World?.m_name ?? "")}_buffer.replay");
-            SaveBufferThumbnail(Now - keep, dest);
-            Clipper.Start(sources, total - keep, float.MaxValue, dest, null, true);
+            string dest = Path.Combine(Plugin.ReplayDir, $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{world}_buffer.replay");
+            Clipper.Start(sources, Mathf.Max(0f, total - Plugin.ReplayBufferMinutes.Value * 60f), float.MaxValue, dest, null, true);
             p?.Message(MessageHud.MessageType.TopLeft, "Replay Mod: saving the Replay Buffer");
             StartBuffer();
         }
 
-        // The first picture taken at or after the saved part's start.
-        private static void SaveBufferThumbnail(float from, string dest)
+        private static void CloseWriter()
         {
-            int i = _bufferThumbs.FindIndex(s => s.T >= from - 0.5f);
-            if (i < 0) i = _bufferThumbs.Count - 1;
-            if (i < 0) return;
-            try { File.WriteAllBytes(Path.ChangeExtension(dest, ".jpg"), _bufferThumbs[i].Jpg); }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { Plugin.Log.LogWarning($"thumbnail for {dest}: {e.Message}"); }
-        }
-
-        private static void TakeBufferThumbnail()
-        {
-            _nextBufferThumb = Now + BufferThumbEvery;
-            float t = Now;
-            Plugin.Instance.StartCoroutine(Exporter.Thumbnail(jpg =>
-            {
-                if (!Buffering) return;
-                _bufferThumbs.Add((t, jpg));
-                float oldest = Now - Plugin.ReplayBufferMinutes.Value * 60f - 2f * BufferThumbEvery;
-                _bufferThumbs.RemoveAll(s => s.T < oldest);
-            }));
-        }
-
-        private static void Close(ReplayWriter w)
-        {
-            try { w.Dispose(); }
+            try { _w.Dispose(); }
             catch (Exception e) { Plugin.Log.LogError($"recording close failed: {e}"); }
+            _w = null;
+            _tracked.Clear();
         }
 
-        // A new file on the session clock (which starts with the first file).
-        private static ReplayWriter Open(string path)
+        private static void Begin(string path, bool buffer)
         {
             Player p = Player.m_localPlayer;
-            if (p == null || ZNet.World == null) return null;
-            if (!Active)
-            {
-                _t0 = Time.time;
-                _bossesSeen.Clear();
-                _marks = 0;
-                _nextStats = 10f;
-            }
+            if (Active || p == null || ZNet.World == null) return;
             World world = ZNet.World;
             var header = new ReplayHeader
             {
@@ -241,67 +176,69 @@ namespace ReplayMod
             }
             try
             {
-                return new ReplayWriter(path, header, Now);
+                _w = new ReplayWriter(path, header);
             }
             catch (Exception e)
             {
                 Plugin.Log.LogError($"can't start recording: {e.Message}");
-                return null;
+                return;
             }
-        }
-
-        // A new file needs the whole state: forget what was written, so everything is written again. While
-        // both run, the other file gets it too, which a replay takes as the same state again.
-        private static void Restart()
-        {
             _tracked.Clear();
             _movers.Clear();
             _hotbarKey = _hudKey = null;
             _selfId = ZDOID.None;
-            _center = Player.m_localPlayer.transform.position;
+            _center = p.transform.position;
             _dynamic.Clear();
+            _bossesSeen.Clear();
             _maxStamina = _maxEitr = -1f;
-            _nextTick = _nextKey = _nextEnv = _nextPose = Now;
+            _rpcCounts.Clear();
+            _t0 = Time.time;
+            _nextTick = _nextKey = _nextEnv = 0f;
+            _nextStats = 10f;
+            _sampleMs = _sampleMsMax = 0f;
+            _samples = 0;
             _boneSource = null;
             _partsRoot = null;
+            _nextPose = 0f;
+            Active = true;
+            Buffering = buffer;
             RecordMap();
+            if (buffer) return;
+            _marks = 0;
+            _thumbDue = true;
+            Plugin.Log.LogInfo($"recording to {path}");
+            p.Message(MessageHud.MessageType.TopLeft, "Replay Mod: recording");
         }
 
         public static void Stop()
         {
-            StopRecording();
-            StopBuffer();
-        }
-
-        public static void StopBuffer()
-        {
-            if (!Buffering) return;
-            DeleteBufferFile(CloseBuffer(out _));
-            DeleteBufferFile(_previousBuffer);
-            _previousBuffer = null;
-            _bufferThumbs.Clear();
-        }
-
-        public static void StopRecording()
-        {
-            if (!Recording) return;
-            ReplayWriter w = _rec;
-            float duration = Now - w.Start;
-            _rec = null;
-            _thumbDue = false;
+            if (!Active) return;
+            Active = false;
+            float duration = Now;
+            if (Buffering)
+            {
+                Buffering = false;
+                string current = _w.Path;
+                CloseWriter();
+                DeleteBufferFile(current);
+                DeleteBufferFile(_previousBuffer);
+                _previousBuffer = null;
+                return;
+            }
             try
             {
-                w.Dispose();
-                long size = new FileInfo(w.Path).Length;
-                string report = Report(w, duration, size);
-                File.WriteAllText(Path.ChangeExtension(w.Path, ".json"), report);
-                Plugin.Log.LogInfo($"recording stopped: {w.Path}\n{report}");
+                _w.Dispose();
+                long size = new FileInfo(_w.Path).Length;
+                string report = Report(duration, size);
+                File.WriteAllText(Path.ChangeExtension(_w.Path, ".json"), report);
+                Plugin.Log.LogInfo($"recording stopped: {_w.Path}\n{report}");
             }
             catch (Exception e)
             {
                 Plugin.Log.LogError($"recording close failed: {e}");
             }
-            if (!Active) _tracked.Clear();
+            _w = null;
+            _tracked.Clear();
             Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, "Replay Mod: recording saved");
         }
 
@@ -318,14 +255,16 @@ namespace ReplayMod
             Player me = Player.m_localPlayer;
             if (me) _center = me.transform.position;
             float t = Now;
-            if (Buffering && me && t - _buf.Start >= Plugin.ReplayBufferMinutes.Value * 60f) RotateBuffer(); // a new file needs a live player
-            if (!Active) return; // a new file couldn't be opened
-            if (_thumbDue && t - _rec.Start >= 1f)
+            if (Buffering && me && t >= Plugin.ReplayBufferMinutes.Value * 60f) // a new file needs a live player
+            {
+                RotateBuffer();
+                t = Now;
+            }
+            if (_thumbDue && t >= 1f)
             {
                 _thumbDue = false;
-                Plugin.Instance.StartCoroutine(Exporter.Thumbnail(_rec.Path));
+                Plugin.Instance.StartCoroutine(Exporter.Thumbnail(_w.Path));
             }
-            if (Buffering && t >= _nextBufferThumb) TakeBufferThumbnail();
             if (t >= _nextTick)
             {
                 _nextTick += 1f / Mathf.Max(1f, Plugin.SampleRate.Value);
@@ -731,16 +670,16 @@ namespace ReplayMod
 
         public static void OnGUI()
         {
-            if (!Recording || Exporter.HideUi) return;
-            float t = Now - _rec.Start;
+            if (!Active || Buffering || Exporter.HideUi) return;
+            float t = Now;
             GUI.color = new Color(1f, 0.25f, 0.25f);
-            GUI.Label(new Rect(12, 8, 400, 24), $"● REC {(int)t / 60:00}:{(int)t % 60:00}   {_rec.CompressedBytes / 1048576f:0.0} MB   {_tracked.Count} objects{(Buffering ? "   + Replay Buffer" : "")}");
+            GUI.Label(new Rect(12, 8, 400, 24), $"● REC {(int)t / 60:00}:{(int)t % 60:00}   {_w.CompressedBytes / 1048576f:0.0} MB   {_tracked.Count} objects");
             GUI.color = Color.white;
         }
 
-        private static string Report(ReplayWriter w, float duration, long fileBytes)
+        private static string Report(float duration, long fileBytes)
         {
-            var s = w.Stats;
+            var s = _w.Stats;
             float min = Mathf.Max(duration / 60f, 1e-3f);
             var sb = new StringBuilder();
             sb.AppendLine("{");

@@ -26,7 +26,7 @@ RECORDING
 
 In game, press Ctrl+F10 to start/stop recording. Press Ctrl+F8 while recording or buffering to put a mark on the timeline.
 
-Replay Buffer: Enable it in the Replays tab or with Ctrl+Alt+F10 in game. Ctrl+Shift+F10 then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does. It keeps running while you record, so you can still save the last few minutes then. Each saved buffer gets a thumbnail from its start.
+Replay Buffer: Enable it in the Replays tab or with Ctrl+Alt+F10 in game. Ctrl+Shift+F10 then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does.
 
 A recording holds:
 

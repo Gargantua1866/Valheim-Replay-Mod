@@ -129,16 +129,10 @@ namespace ReplayMod
         private readonly BinaryWriter _rw;
         public readonly RecordStats Stats = new RecordStats();
         public readonly string Path;
-        // Callers pass times on one clock; the file stores them from Start.
-        public readonly float Start;
-        // While a recording and the Replay Buffer both run, every record goes to the buffer's file too.
-        public ReplayWriter Tee;
-        private float _recT;
 
-        public ReplayWriter(string path, ReplayHeader header, float start)
+        public ReplayWriter(string path, ReplayHeader header)
         {
             Path = path;
-            Start = start;
             _file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
             _deflate = new DeflateStream(_file, System.IO.Compression.CompressionLevel.Optimal);
             _w = new BinaryWriter(new BufferedStream(_deflate, 1 << 16));
@@ -150,10 +144,9 @@ namespace ReplayMod
 
         private BinaryWriter Begin(RecType type, float t)
         {
-            _recT = t;
             _rec.SetLength(0);
             _rw.Write((byte)type);
-            _rw.Write(t - Start);
+            _rw.Write(t);
             return _rw;
         }
 
@@ -161,17 +154,7 @@ namespace ReplayMod
         {
             _rw.Flush();
             _w.Write(_rec.GetBuffer(), 0, (int)_rec.Length);
-            Tee?.Copy(_rec, _recT);
             return _rec.Length;
-        }
-
-        // A record from another writer: type, time (from this file's start), body.
-        private void Copy(MemoryStream rec, float t)
-        {
-            byte[] b = rec.GetBuffer();
-            _w.Write(b[0]);
-            _w.Write(t - Start);
-            _w.Write(b, 5, (int)rec.Length - 5);
         }
 
         public void Zdo(float t, ZDOID id, ZdoFlags flags, Vector3 pos, byte[] data)

@@ -144,8 +144,8 @@ namespace ReplayMod
                     _spawned = Player.m_localPlayer;
                     _spawnedAt = Time.time;
                 }
-                if (ReplayBuffer.Value && !Recorder.Buffering && ZNet.World != null && Time.time - _spawnedAt > 2f) Recorder.StartBuffer();
-                else if (!ReplayBuffer.Value && Recorder.Buffering) Recorder.StopBuffer();
+                if (ReplayBuffer.Value && !Recorder.Active && ZNet.World != null && Time.time - _spawnedAt > 2f) Recorder.StartBuffer();
+                else if (!ReplayBuffer.Value && Recorder.Buffering) Recorder.Stop();
             }
             string clip = Clipper.TakeMessage();
             if (clip != null)

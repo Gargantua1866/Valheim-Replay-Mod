@@ -168,8 +168,30 @@ namespace ReplayMod
             }
         }
 
-        // A wider full-detail terrain radius in replays (see ReplaySession.FindSpawnPoint).
-        [HarmonyPatch(typeof(ZNet), nameof(ZNet.GetSyncedSimulationDistance))]
+        // Patches on methods the game calls very often, applied only while a replay is open: even a postfix
+        // that returns at once costs a little on every call in normal play.
+        internal static class ReplayOnly
+        {
+            private static Harmony _harmony;
+
+            internal static void Apply()
+            {
+                if (_harmony != null) return;
+                _harmony = new Harmony(Plugin.Guid + ".replay");
+                _harmony.Patch(AccessTools.Method(typeof(ZNet), nameof(ZNet.GetSyncedSimulationDistance)),
+                    postfix: new HarmonyMethod(typeof(ReplayTerrainRadius), "Postfix"));
+                _harmony.Patch(AccessTools.Method(typeof(Player), nameof(Player.IsTeleporting)),
+                    postfix: new HarmonyMethod(typeof(LoadLikeAPortal), "Postfix"));
+            }
+
+            internal static void Remove()
+            {
+                _harmony?.UnpatchSelf();
+                _harmony = null;
+            }
+        }
+
+        // A wider full-detail terrain radius in replays (see ReplaySession.FindSpawnPoint). See ReplayOnly.
         private static class ReplayTerrainRadius
         {
             private static void Postfix(ref SimulationDistance __result)
@@ -272,8 +294,7 @@ namespace ReplayMod
             }
         }
 
-        // While loading after a far jump the viewer counts as teleporting (see ReplaySession.Loading).
-        [HarmonyPatch(typeof(Player), nameof(Player.IsTeleporting))]
+        // While loading after a far jump the viewer counts as teleporting (see ReplaySession.Loading). See ReplayOnly.
         private static class LoadLikeAPortal
         {
             private static void Postfix(Player __instance, ref bool __result)

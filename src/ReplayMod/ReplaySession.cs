@@ -101,6 +101,7 @@ namespace ReplayMod
             _prevFlags = (SaveSystemSessionFlags)SessionFlags.GetValue(null);
             SaveSystem.SetSessionFlags(SaveSystemSessionFlags.DontSaveCharacter | SaveSystemSessionFlags.DontSaveWorld);
             Active = true;
+            ReplayPatches.ReplayOnly.Apply();
             Ready = false;
             _baseApplied = false;
             T = 0f;
@@ -122,6 +123,7 @@ namespace ReplayMod
             Plugin.Log.LogInfo("replay ended");
             SessionFlags.SetValue(null, _prevFlags);
             Active = false;
+            ReplayPatches.ReplayOnly.Remove();
             Ready = false;
             Loading = false;
             KeptAreas.Clear();

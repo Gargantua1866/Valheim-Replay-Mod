@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.1.1";
+        public const string Version = "0.1.2";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;
@@ -20,7 +20,7 @@ namespace ReplayMod
         internal static ConfigEntry<KeyboardShortcut> ReplayBufferKey, ReplayBufferToggleKey;
         internal static ConfigEntry<bool> ExportOpen;
 
-        internal static ConfigEntry<KeyboardShortcut> RecordKey;
+        internal static ConfigEntry<KeyboardShortcut> RecordKey, MarkKey;
         internal static ConfigEntry<float> SampleRate;
         internal static ConfigEntry<float> DynamicRadius;
         internal static ConfigEntry<float> ReplayLodBias;
@@ -48,6 +48,7 @@ namespace ReplayMod
             Log = Logger;
             // New key names: the old ones hold Ctrl+F12, which Steam uses to record a clip, and would stay in existing config files.
             RecordKey = Config.Bind("Recording", "RecordShortcut", new KeyboardShortcut(KeyCode.F10, KeyCode.LeftControl), "Start or stop recording.");
+            MarkKey = Config.Bind("Recording", "MarkShortcut", new KeyboardShortcut(KeyCode.F8, KeyCode.LeftControl), "Put a mark on the timeline while recording or buffering.");
             ReplayBuffer = Config.Bind("Recording", "ReplayBuffer", false, "Keep recording quietly while you play, so the save key can keep what just happened. Uses as much as a normal recording does.");
             ReplayBufferMinutes = Config.Bind("Recording", "ReplayBufferMinutes", 2f, new ConfigDescription("How many minutes the save key keeps.", new AcceptableValueRange<float>(0.5f, 30f)));
             ReplayBufferMinutes.SettingChanged += (s, e) => MenuUI.ListChanged();
@@ -131,6 +132,7 @@ namespace ReplayMod
             {
                 if (RecordKey.Value.IsDown()) Recorder.Toggle();
                 else if (ReplayBufferKey.Value.IsDown()) Recorder.SaveBuffer();
+                else if (MarkKey.Value.IsDown()) Recorder.MarkByHand();
                 else if (ReplayBufferToggleKey.Value.IsDown())
                 {
                     ReplayBuffer.Value = !ReplayBuffer.Value;
@@ -142,8 +144,8 @@ namespace ReplayMod
                     _spawned = Player.m_localPlayer;
                     _spawnedAt = Time.time;
                 }
-                if (ReplayBuffer.Value && !Recorder.Active && ZNet.World != null && Time.time - _spawnedAt > 2f) Recorder.StartBuffer();
-                else if (!ReplayBuffer.Value && Recorder.Buffering) Recorder.Stop();
+                if (ReplayBuffer.Value && !Recorder.Buffering && ZNet.World != null && Time.time - _spawnedAt > 2f) Recorder.StartBuffer();
+                else if (!ReplayBuffer.Value && Recorder.Buffering) Recorder.StopBuffer();
             }
             string clip = Clipper.TakeMessage();
             if (clip != null)

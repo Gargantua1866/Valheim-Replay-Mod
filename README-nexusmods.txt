@@ -24,9 +24,9 @@ Video export requires FFmpeg, which Replay Mod doesn't include. See the Export s
 
 RECORDING
 
-In game, press Ctrl+F10 to start/stop recording.
+In game, press Ctrl+F10 to start/stop recording. Press Ctrl+F8 while recording or buffering to put a mark on the timeline.
 
-Replay Buffer: Enable it in the Replays tab or with Ctrl+Alt+F10 in game. Ctrl+Shift+F10 then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does.
+Replay Buffer: Enable it in the Replays tab or with Ctrl+Alt+F10 in game. Ctrl+Shift+F10 then saves the last few minutes while you play. Change the length in the Replays tab or the config. The buffer records all the time, so it uses as many resources as a normal recording does. It keeps running while you record, so you can still save the last few minutes then. Each saved buffer gets a thumbnail from its start.
 
 A recording holds:
 
@@ -123,7 +123,7 @@ TIMELINE
 
 A click seeks. Dragging from the playhead scrubs. Dragging anywhere else selects a section for Trim, and a right-click clears it.
 
-Recordings mark deaths, kills, bosses (seen and defeated) and teleports as colored ticks on the timeline. Hover one, or a camera key, for details.
+Recordings mark deaths, kills, bosses (seen and defeated), teleports and your own marks as colored ticks on the timeline. Hover one, or a camera key, for details.
 
 
 TARGETS
@@ -152,7 +152,7 @@ CONFIGURATION
 
 Settings are in BepInEx/config/com.gargantua.replaymod.cfg, or in the F1 menu if you have a configuration manager mod installed. The sections are:
 
-- Recording: the record and Replay Buffer keys, what gets recorded and at what rate.
+- Recording: the record, mark and Replay Buffer keys, what gets recorded and at what rate.
 - Playback: replaying other mods' RPCs, LOD bias, lowest sound pitch and terrain load radius.
 - Export: frame rate, resolution, audio and FfmpegPath.
 - UI: the Tab menu's size, closed sections and camera presets.

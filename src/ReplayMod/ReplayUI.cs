@@ -630,6 +630,7 @@ namespace ReplayMod
                 case MarkerKind.Kill: return new Color(1f, 0.6f, 0.15f);
                 case MarkerKind.Boss: return new Color(0.75f, 0.4f, 1f);
                 case MarkerKind.Portal: return new Color(0.3f, 0.85f, 1f);
+                case MarkerKind.Manual: return new Color(1f, 0.9f, 0.3f);
                 default: return new Color(0.4f, 0.9f, 0.4f);
             }
         }

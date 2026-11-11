@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- Ctrl+F8 puts a mark on the timeline while recording or buffering. Change it with `MarkShortcut` in the config.
+- The Replay Buffer keeps running while you record, so you can save the last few minutes during a recording.
+- A saved Replay Buffer gets its thumbnail right away, from the start of the saved part, without opening the replay first.
+
 ## 0.1.1
 
 - Recordings now hold the game's network clock, and replays run on it. Mods that start an animation from a time stored on an object, such as tricks on vehicles, now play it in replays as it was recorded. Recordings made before this version don't have the clock.

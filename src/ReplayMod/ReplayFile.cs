@@ -12,7 +12,7 @@ namespace ReplayMod
     internal enum RecType : byte { Zdo = 1, Remove = 2, Rpc = 3, Cam = 4, Env = 5, HiFi = 6, PoseBones = 7, Pose = 8, PartsHeader = 9, Parts = 10, Marker = 11, Vitals = 12, Wind = 13, Water = 14, Hotbar = 15, Hud = 16, Self = 17, Map = 18, NetTime = 19, End = 255 }
 
     // Timeline markers: things worth jumping to.
-    internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill }
+    internal enum MarkerKind : byte { Death, Kill, Boss, Portal, Skill, Manual }
 
     [Flags]
     internal enum ZdoFlags : byte { None = 0, Dynamic = 1, Keyframe = 2 }
@@ -129,10 +129,16 @@ namespace ReplayMod
         private readonly BinaryWriter _rw;
         public readonly RecordStats Stats = new RecordStats();
         public readonly string Path;
+        // Callers pass times on one clock; the file stores them from Start.
+        public readonly float Start;
+        // While a recording and the Replay Buffer both run, every record goes to the buffer's file too.
+        public ReplayWriter Tee;
+        private float _recT;
 
-        public ReplayWriter(string path, ReplayHeader header)
+        public ReplayWriter(string path, ReplayHeader header, float start)
         {
             Path = path;
+            Start = start;
             _file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
             _deflate = new DeflateStream(_file, System.IO.Compression.CompressionLevel.Optimal);
             _w = new BinaryWriter(new BufferedStream(_deflate, 1 << 16));
@@ -144,9 +150,10 @@ namespace ReplayMod
 
         private BinaryWriter Begin(RecType type, float t)
         {
+            _recT = t;
             _rec.SetLength(0);
             _rw.Write((byte)type);
-            _rw.Write(t);
+            _rw.Write(t - Start);
             return _rw;
         }
 
@@ -154,7 +161,17 @@ namespace ReplayMod
         {
             _rw.Flush();
             _w.Write(_rec.GetBuffer(), 0, (int)_rec.Length);
+            Tee?.Copy(_rec, _recT);
             return _rec.Length;
+        }
+
+        // A record from another writer: type, time (from this file's start), body.
+        private void Copy(MemoryStream rec, float t)
+        {
+            byte[] b = rec.GetBuffer();
+            _w.Write(b[0]);
+            _w.Write(t - Start);
+            _w.Write(b, 5, (int)rec.Length - 5);
         }
 
         public void Zdo(float t, ZDOID id, ZdoFlags flags, Vector3 pos, byte[] data)

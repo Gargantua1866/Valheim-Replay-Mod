@@ -490,6 +490,15 @@ namespace ReplayMod
             private static void Finalizer() => _showDespiteHidden = false;
         }
 
+        [HarmonyPatch(typeof(Game), nameof(Game.Logout))]
+        private static class KeepTheView
+        {
+            private static void Prefix()
+            {
+                if (ReplaySession.Active && ReplaySession.Ready) CameraPath.SaveView(ReplaySession.T);
+            }
+        }
+
         [HarmonyPatch(typeof(FejdStartup), "Start")]
         private static class BackAtMenu
         {

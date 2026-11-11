@@ -27,7 +27,8 @@ namespace ReplayMod
         internal static ConfigEntry<float> MinSoundPitch;
         internal static ConfigEntry<float> MenuWidth, MenuHeight;
         internal static ConfigEntry<string> ClosedSections;
-        internal static readonly ConfigEntry<string>[] CameraPresets = new ConfigEntry<string>[4];
+        internal static readonly ConfigEntry<string>[] CameraPresets = new ConfigEntry<string>[8];
+        internal static readonly ConfigEntry<string>[] CameraPresetNames = new ConfigEntry<string>[8];
         internal static ConfigEntry<int> ExportFps, ExportScale, ScreenshotScale;
         internal static ConfigEntry<bool> ExportAudio;
         internal static ConfigEntry<string> FfmpegPath;
@@ -68,7 +69,11 @@ namespace ReplayMod
             ReplayModRpcs = Config.Bind("Playback", "ReplayModRpcs", true, "Replay other mods' RPCs aimed at recorded objects (weapon fire, effects). Turn off if a mod misbehaves in replays.");
             ReplayLodBias = Config.Bind("Playback", "ReplayLodBias", 7f, "LOD bias in replays, so creatures and small objects are drawn from further away. 0 = leave your setting alone.");
             MinSoundPitch = Config.Bind("Playback", "MinSoundPitch", 0.35f, "In slow motion, sounds slow down with the picture but never below this pitch (lower turns them into a rumble). 0.01 = always match the picture.");
-            for (int i = 0; i < CameraPresets.Length; i++) CameraPresets[i] = Config.Bind("UI", $"CameraPreset{i + 1}", "", "Saved from the replay menu.");
+            for (int i = 0; i < CameraPresets.Length; i++)
+            {
+                CameraPresets[i] = Config.Bind("UI", $"CameraPreset{i + 1}", "", "Saved from the replay menu.");
+                CameraPresetNames[i] = Config.Bind("UI", $"CameraPresetName{i + 1}", "", "The preset's name in the replay menu. Empty = \"Preset N\".");
+            }
             ClosedSections = Config.Bind("UI", "ClosedSections", "Camera presets|Time and weather|HUD and characters", "Replay menu sections that start closed.");
             MenuWidth = Config.Bind("UI", "MenuWidth", 360f, "Replay menu width (drag its corner to change).");
             MenuHeight = Config.Bind("UI", "MenuHeight", 640f, "Replay menu height.");

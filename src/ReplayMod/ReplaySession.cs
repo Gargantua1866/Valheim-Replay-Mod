@@ -241,6 +241,14 @@ namespace ReplayMod
             _settleFrames = SettleFrames;
             Ready = true;
             Plugin.Log.LogInfo($"replay ready: {_alive.Count} objects at t=0");
+            // Back where the replay was left: the playhead, the camera and its settings.
+            CameraPath.View view = CameraPath.LastView;
+            if (view != null)
+            {
+                if (!FreeCam.PresetFromText(view.Settings)) Plugin.Log.LogWarning("saved camera settings unreadable");
+                FreeCam.SetPose(view.Pose.pos, view.Pose.yaw, view.Pose.pitch, view.Pose.roll, view.Pose.fov);
+                if (view.T > 0f) Seek(Mathf.Min(view.T, Duration));
+            }
         }
 
         private static void SetupGhost(Player p)

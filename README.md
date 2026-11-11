@@ -41,7 +41,7 @@ Recordings go to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\ReplayMod\repl
 1. On the main menu, pick a character and press Start.
 2. Open the **Replays** tab, pick a replay and press **Play**. The panel beside the list shows the replay's thumbnail and lets you rename or copy it.
 3. The replay opens paused, in a temporary world built from the recorded world's seed. Everything still loads while paused. Nothing is saved to that world or to your character.
-4. To leave, use **Escape → Logout** or **Exit replay** in the Tab menu. The Tab menu can also leave without saving, which puts camera keys and bookmarks back to how they were when the replay opened.
+4. To leave, use **Escape → Logout** or **Exit replay** in the Tab menu. The Tab menu can also leave without saving, which puts camera keys and bookmarks back to how they were when the replay opened. Leaving with saving keeps the playhead, camera position and camera settings, and the replay opens there next time.
 
 ### Keys
 
@@ -108,7 +108,7 @@ Type in the search box at the top to show only the sections that have what you'r
 
 - **Framing and focus:** has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
 - **Picture:** changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts.
-- **Camera presets:** keep all of the settings above.
+- **Camera presets:** eight slots that keep all of the settings above. Click a preset's name to rename it.
 - **Time and weather:** wind follows the recording unless *Set the wind* is on, which sets its direction and strength.
 - **Hide from the shot:** hides the aimed object (U), all players, what players hold, and projectiles. Projectiles that a mod draws its own way may not count.
 - **Players:** lists the recorded players. *Go to* puts the camera behind one, *Follow* follows them, and *Eyes* shows their view.

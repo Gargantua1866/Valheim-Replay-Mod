@@ -1245,23 +1245,32 @@ namespace ReplayMod
 
         private static void PresetsSection()
         {
+            Ui.Label("Click a name to rename it.");
             for (int i = 0; i < Plugin.CameraPresets.Length; i++)
             {
                 GUILayout.BeginHorizontal();
-                Ui.Label($"Preset {i + 1}", GUILayout.Width(70));
+                string name = PresetName(i);
+                string typed = GUILayout.TextField(name, 32, GUILayout.Width(150));
+                if (typed != name) Plugin.CameraPresetNames[i].Value = typed.Trim() == $"Preset {i + 1}" ? "" : typed;
                 GUI.enabled = Plugin.CameraPresets[i].Value.Length > 0;
                 if (Ui.Button("Load"))
                 {
-                    Toast(FreeCam.PresetFromText(Plugin.CameraPresets[i].Value) ? $"Preset {i + 1} loaded" : $"Preset {i + 1} is damaged");
+                    Toast(FreeCam.PresetFromText(Plugin.CameraPresets[i].Value) ? $"{PresetName(i)} loaded" : $"{PresetName(i)} is damaged");
                 }
                 GUI.enabled = true;
                 if (Ui.Button("Save"))
                 {
                     Plugin.CameraPresets[i].Value = FreeCam.PresetToText();
-                    Toast($"Preset {i + 1} saved");
+                    Toast($"{PresetName(i)} saved");
                 }
                 GUILayout.EndHorizontal();
             }
+        }
+
+        private static string PresetName(int i)
+        {
+            string n = Plugin.CameraPresetNames[i].Value;
+            return string.IsNullOrEmpty(n) ? $"Preset {i + 1}" : n;
         }
 
         private static void PlayersSection()
@@ -1416,7 +1425,7 @@ namespace ReplayMod
                     Game.instance?.Logout(save: false);
                 }
                 GUILayout.EndHorizontal();
-                Ui.Label("Without saving: camera keys and bookmarks go back to how they were when this replay opened.");
+                Ui.Label("Without saving: camera keys, bookmarks and the camera view go back to how they were when this replay opened.");
             }
         }
 

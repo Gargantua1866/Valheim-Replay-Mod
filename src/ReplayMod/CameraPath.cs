@@ -50,7 +50,17 @@ namespace ReplayMod
         public static bool Show = true; // draw the path in the world (hidden while following)
 
         private static string _file, _fileAtLoad;
-        private static bool _canRevert;
+        private static bool _canRevert, _reverted;
+
+        // Where the camera was, with its settings, when the replay was last left with saving. Null = none.
+        public class View
+        {
+            public float T;
+            public Key Pose;
+            public string Settings; // FreeCam.PresetToText
+        }
+
+        public static View LastView { get; private set; }
         private const int Dims = 7;
 
         public static void Load(string replayPath)
@@ -62,6 +72,8 @@ namespace ReplayMod
             Follow = false;
             Rate = 1f;
             Anchor = null;
+            LastView = null;
+            _reverted = false;
             _canRevert = false; // set once the file has been read: an unreadable one is never overwritten or deleted
             _file = Path.ChangeExtension(replayPath, ".camera.txt");
             try
@@ -81,6 +93,7 @@ namespace ReplayMod
         public static void RevertFile()
         {
             if (!_canRevert) return;
+            _reverted = true;
             try
             {
                 if (_fileAtLoad != null) File.WriteAllText(_file, _fileAtLoad);
@@ -97,6 +110,7 @@ namespace ReplayMod
         //   b <slot> <x> <y> <z> <yaw> <pitch> <roll> <fov>
         //   r <path speed>
         //   a <user> <id> <turn 0/1> <name>
+        //   v <replay time> <x> <y> <z> <yaw> <pitch> <roll> <fov> <camera settings...>
         private static string ToText(List<Key> keys, Key[] bookmarks)
         {
             var sb = new StringBuilder("# ReplayMod camera path 1\n");
@@ -109,6 +123,7 @@ namespace ReplayMod
             {
                 if (bookmarks[i] != null && bookmarks[i].fov > 0f) sb.Append($"b {i} {Pose(bookmarks[i])}\n");
             }
+            if (LastView != null) sb.Append($"v {F(LastView.T)} {Pose(LastView.Pose)} {LastView.Settings}\n");
             return sb.ToString();
         }
 
@@ -130,6 +145,16 @@ namespace ReplayMod
                         Target = new RecId(long.Parse(f[1], CultureInfo.InvariantCulture), uint.Parse(f[2], CultureInfo.InvariantCulture)),
                         Turn = f[3] == "1",
                         Name = string.Join(" ", f, 4, f.Length - 4),
+                    };
+                    continue;
+                }
+                if (f[0] == "v" && f.Length > 9)
+                {
+                    LastView = new View
+                    {
+                        T = P(1),
+                        Pose = new Key { pos = new Vector3(P(2), P(3), P(4)), yaw = P(5), pitch = P(6), roll = P(7), fov = P(8) },
+                        Settings = string.Join(" ", f, 9, f.Length - 9),
                     };
                     continue;
                 }
@@ -165,6 +190,19 @@ namespace ReplayMod
         {
             Snapshot($"bookmark {slot + 1}");
             _bookmarks[slot] = new Key { pos = pos, yaw = yaw, pitch = pitch, roll = roll, fov = fov };
+            Save();
+        }
+
+        // Leaving with saving keeps the view; "exit without saving" has already put the file back.
+        public static void SaveView(float t)
+        {
+            if (_reverted || _file == null) return;
+            LastView = new View
+            {
+                T = t,
+                Pose = new Key { pos = FreeCam.Pos, yaw = FreeCam.Yaw, pitch = FreeCam.Pitch, roll = FreeCam.Roll, fov = FreeCam.Fov },
+                Settings = FreeCam.PresetToText(),
+            };
             Save();
         }
 
@@ -673,13 +711,18 @@ namespace ReplayMod
             Keys[0].ease = Ease.Linear;
             Rate = 0.5f;
             Anchor = new PathAnchor { Target = new RecId(-5L, 7u), Turn = true, Name = "Bee hive" };
+            LastView = new View { T = 12.5f, Pose = new Key { pos = new Vector3(4f, 5f, 6f), yaw = 90f, pitch = 3f, roll = 1f, fov = 40f }, Settings = "65 10 0.5 1 1 30 0 0.3 20" };
             string text = ToText(Keys, marks);
             Rate = 1f;
             Anchor = null;
+            LastView = null;
             FromText(text, back, backMarks);
             ok &= Rate == 0.5f && Anchor != null && Anchor.Target.Equals(new RecId(-5L, 7u)) && Anchor.Turn && Anchor.Name == "Bee hive";
+            ok &= LastView != null && LastView.T == 12.5f && LastView.Pose.pos == new Vector3(4f, 5f, 6f) && LastView.Pose.fov == 40f
+                && LastView.Settings == "65 10 0.5 1 1 30 0 0.3 20";
             Rate = 1f;
             Anchor = null;
+            LastView = null;
             ok &= back.Count == 2 && back[1].pos == Keys[1].pos && back[0].ease == Ease.Linear && back[1].t == 10f && back[1].speed == 0.25f
                 && backMarks[4] != null && backMarks[4].pos == marks[4].pos && backMarks[4].fov == 50f && backMarks[0] == null;
             Keys.Clear();

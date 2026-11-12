@@ -10,7 +10,7 @@ namespace ReplayMod
     internal static class Picture
     {
         public static float Brightness, Exposure, Temperature, Saturation = 1f, Contrast = 1f, Bloom = 1f, Shafts = 1f;
-        public static bool LensDirt = true;
+        public static bool LensDirt; // off by default: the dirt pattern shows in every bright shot
 
         private static PostProcessingProfile _profile;
         private static ColorGradingModel.Settings _grading;
@@ -28,7 +28,7 @@ namespace ReplayMod
         {
             Brightness = Exposure = Temperature = 0f;
             Saturation = Contrast = Bloom = Shafts = 1f;
-            LensDirt = true;
+            LensDirt = false;
         }
 
         // Called every frame; writes only when a value changed (color grading rebuilds its table on a write).
@@ -61,7 +61,8 @@ namespace ReplayMod
             }
             if (_applied == Now) return;
             _applied = Now;
-            bool neutral = Now == Neutral;
+            // Lens dirt only changes the bloom, so it has no say in whether color grading is on.
+            bool neutral = (Brightness, Exposure, Temperature, Saturation, Contrast, Bloom, Shafts, true) == Neutral;
             if (_profile)
             {
                 ColorGradingModel.Settings grading = _grading;

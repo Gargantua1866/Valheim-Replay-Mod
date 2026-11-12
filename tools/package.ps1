@@ -37,3 +37,13 @@ if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
 Remove-Item $stage -Recurse -Force
 Write-Host "Packaged $zip ($([math]::Round((Get-Item $zip).Length / 1KB, 1)) KB)"
+
+# Nexus Mods: extracted into the Valheim folder (by hand or by Vortex), so the DLL sits at its install path.
+$nexusDir = Join-Path $stage "BepInEx\plugins\ReplayMod"
+New-Item -ItemType Directory -Force $nexusDir | Out-Null
+Copy-Item $dll $nexusDir
+$nexus = Join-Path $root "dist\Replay_Mod-$version-nexus.zip"
+if (Test-Path $nexus) { Remove-Item $nexus }
+Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $nexus -CompressionLevel Optimal
+Remove-Item $stage -Recurse -Force
+Write-Host "Packaged $nexus ($([math]::Round((Get-Item $nexus).Length / 1KB, 1)) KB)"

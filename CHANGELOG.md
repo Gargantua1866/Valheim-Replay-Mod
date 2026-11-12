@@ -5,10 +5,8 @@
 - Ctrl+F8 puts a mark on the timeline while recording or buffering. Change it with `MarkShortcut` in the config.
 - Leaving a replay with saving keeps the playhead, camera position and camera settings, and the replay opens there next time.
 - Eight camera presets instead of four, and each can be renamed.
+- Lens dirt in the bloom is off by default. Turn it on in the Picture section.
 - Recording costs less: the file is compressed on a background thread, characters standing still write nothing at the physics rate, and the scan for changed objects does less work.
-
-## 0.1.1
-
 - Recordings now hold the game's network clock, and replays run on it. Mods that start an animation from a time stored on an object, such as tricks on vehicles, now play it in replays as it was recorded. Recordings made before this version don't have the clock.
 
 ## 0.1.0

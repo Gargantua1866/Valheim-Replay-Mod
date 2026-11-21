@@ -20,6 +20,8 @@ Install Replay Mod with a mod manager such as Gale, which also installs BepInEx.
 
 Video export requires FFmpeg, which Replay Mod doesn't include. See [Export](#export).
 
+To watch a replay recorded in a world made with a terrain generation mod such as Riverheim, that mod must be installed too. See [Compatibility](#compatibility).
+
 ## Recording
 
 In game, press **Ctrl+F10** to start/stop recording. Press **Ctrl+F8** while recording or buffering to put a mark on the timeline.
@@ -152,7 +154,7 @@ Settings are in `BepInEx/config/com.gargantua.replaymod.cfg`, or in the F1 menu 
 - Only the player recording or watching needs Replay Mod. Other players on a server don't.
 - Replay Mod replays other mods' RPCs aimed at recorded objects, such as weapon fire and effects. If a mod misbehaves in replays, turn off `ReplayModRpcs`.
 - `RecordPose` records your character's final bone pose, so animation mods replay as you saw them.
-- Worldgen mods built on Worldhalla, such as Riverheim, replay with their own terrain. The mod has to be installed while you watch. Recordings made before 0.1.3 use the saved world of the same name and seed, if you have it.
+- **Terrain generation mods such as Riverheim must be installed to watch a replay recorded with them.** Replay Mod rebuilds the world from its seed, so without the mod the replay shows vanilla terrain. Mods built on Worldhalla (Riverheim is one) are supported. Recordings made before 0.1.3 take the generator from your saved world of the same name and seed, if you have it.
 - Mods that make teleporting faster, and the game's debug mode, can make replays unstable while you watch them. Normal play isn't affected.
 
 ## Known limits

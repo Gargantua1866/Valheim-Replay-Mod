@@ -19,6 +19,7 @@ Replay Mod records everything that happens around you in Valheim. Open the recor
 [list]
 [*][b]BepInEx[/b], to load the plugin
 [*][b]FFmpeg[/b], only for video export. Replay Mod doesn't include it; see Export below.
+[*]The [b]terrain generation mod[/b], such as Riverheim, that a replay was recorded with, to watch that replay. Without it the replay shows vanilla terrain.
 [/list]
 
 [size=5][b]Installation[/b][/size]
@@ -147,7 +148,7 @@ Settings are in [b]BepInEx\config\com.gargantua.replaymod.cfg[/b], or in the F1 
 [*]Only the player recording or watching needs Replay Mod. Other players on a server don't.
 [*]Replay Mod replays other mods' RPCs aimed at recorded objects, such as weapon fire and effects. If a mod misbehaves in replays, turn off [b]ReplayModRpcs[/b].
 [*][b]RecordPose[/b] records your character's final bone pose, so animation mods replay as you saw them.
-[*]Worldgen mods built on Worldhalla, such as Riverheim, replay with their own terrain. The mod has to be installed while you watch. Recordings made before 0.1.3 use the saved world of the same name and seed, if you have it.
+[*][b]Terrain generation mods such as Riverheim must be installed to watch a replay recorded with them.[/b] Replay Mod rebuilds the world from its seed, so without the mod the replay shows vanilla terrain. Mods built on Worldhalla (Riverheim is one) are supported. Recordings made before 0.1.3 take the generator from your saved world of the same name and seed, if you have it.
 [*]Mods that make teleporting faster, and the game's debug mode, can make replays unstable while you watch them. Normal play isn't affected.
 [/list]
 

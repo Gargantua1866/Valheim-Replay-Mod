@@ -98,6 +98,8 @@ namespace ReplayMod
                 // World has none, so it drew the minimap again (5-6 s) for every replay of the same seed.
                 m_worldVersion = global::Version.World.CheatCleanSlate,
             };
+            CustomWorldgen.Apply(world, Data.Header.WorldGen, Data.Header.WorldName, Data.Header.Seed);
+            CustomWorldgen.KeepMinimapCacheHonest(world);
             _prevFlags = (SaveSystemSessionFlags)SessionFlags.GetValue(null);
             SaveSystem.SetSessionFlags(SaveSystemSessionFlags.DontSaveCharacter | SaveSystemSessionFlags.DontSaveWorld);
             Active = true;

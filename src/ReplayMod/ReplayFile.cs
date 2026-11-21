@@ -21,9 +21,9 @@ namespace ReplayMod
     {
         public const string Magic = "MUNINN"; // the mod's old name; existing recordings start with it
         // 2 added the pose lane, 3 vehicle parts, 4 markers, 5 vitals, 6 wind, 7 waves, hotbar, HUD, player and map,
-        // 8 the network clock.
+        // 8 the network clock, 9 the world's custom generator (see CustomWorldgen).
         // Older ones still read; a newer one is refused, since its new record types can't be skipped.
-        public const int FormatVersion = 8;
+        public const int FormatVersion = 9;
 
         public int Version = FormatVersion;
         public string GameVersion = "";
@@ -36,6 +36,7 @@ namespace ReplayMod
         public uint PlayerId;
         public Vector3 StartPos;
         public string Date = "";
+        public byte[] WorldGen = Array.Empty<byte>(); // empty = vanilla terrain (format 9)
 
         public void Write(BinaryWriter w)
         {
@@ -51,6 +52,11 @@ namespace ReplayMod
             w.Write(PlayerId);
             w.WriteV(StartPos);
             w.Write(Date);
+            if (Version >= 9)
+            {
+                w.Write(WorldGen.Length);
+                w.Write(WorldGen);
+            }
         }
 
         public static ReplayHeader Read(BinaryReader r)
@@ -76,6 +82,7 @@ namespace ReplayMod
             h.PlayerId = r.ReadUInt32();
             h.StartPos = r.ReadV();
             h.Date = r.ReadString();
+            if (h.Version >= 9) h.WorldGen = r.ReadBytes(r.ReadInt32());
             return h;
         }
     }

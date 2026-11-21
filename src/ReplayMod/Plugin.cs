@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.1.2";
+        public const string Version = "0.1.3";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;

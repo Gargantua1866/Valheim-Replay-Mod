@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Replays use the terrain of worldgen mods built on Worldhalla, such as Riverheim, instead of vanilla terrain. Recordings now keep the world's generator settings; older ones use the saved world of the same name and seed, if you have it.
+
 ## 0.1.2
 
 - Ctrl+F8 puts a mark on the timeline while recording or buffering. Change it with `MarkShortcut` in the config.

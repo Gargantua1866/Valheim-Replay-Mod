@@ -152,6 +152,7 @@ Settings are in `BepInEx/config/com.gargantua.replaymod.cfg`, or in the F1 menu 
 - Only the player recording or watching needs Replay Mod. Other players on a server don't.
 - Replay Mod replays other mods' RPCs aimed at recorded objects, such as weapon fire and effects. If a mod misbehaves in replays, turn off `ReplayModRpcs`.
 - `RecordPose` records your character's final bone pose, so animation mods replay as you saw them.
+- Worldgen mods built on Worldhalla, such as Riverheim, replay with their own terrain. The mod has to be installed while you watch. Recordings made before 0.1.3 use the saved world of the same name and seed, if you have it.
 - Mods that make teleporting faster, and the game's debug mode, can make replays unstable while you watch them. Normal play isn't affected.
 
 ## Known limits

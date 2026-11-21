@@ -165,6 +165,7 @@ namespace ReplayMod
                 SeedName = world.m_seedName,
                 Seed = world.m_seed,
                 WorldGenVersion = world.m_worldGenVersion,
+                WorldGen = CustomWorldgen.Save(world),
                 PlayerName = p.GetPlayerName(),
                 StartPos = p.transform.position,
                 Date = DateTime.Now.ToString("u"),

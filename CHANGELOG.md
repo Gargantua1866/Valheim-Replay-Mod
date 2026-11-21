@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- The camera can follow, mount on or orbit missiles that mods fly on each machine without a network identity. It lets go when the missile explodes. `LocalTargets` in the config sets which kinds count.
+
 ## 0.1.3
 
 - Replays use the terrain of worldgen mods built on Worldhalla, such as Riverheim, instead of vanilla terrain. Recordings now keep the world's generator settings; older ones use the saved world of the same name and seed, if you have it. The terrain mod must be installed to watch such a replay.

@@ -124,7 +124,7 @@ Recordings mark deaths, kills, bosses (seen and defeated), teleports and your ow
 
 ### Targets
 
-You can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key.
+You can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key. Missiles that mods fly on each machine without a network identity work too: follow, mount on or orbit one, and the camera lets go where it explodes. `LocalTargets` in the config lists which kinds count (by component name; Missile by default).
 
 ### Trim
 
@@ -145,7 +145,7 @@ Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual 
 Settings are in `BepInEx/config/com.gargantua.replaymod.cfg`, or in the F1 menu if you have a configuration manager mod installed. The sections are:
 
 - **Recording:** the record, mark and Replay Buffer keys, what gets recorded and at what rate.
-- **Playback:** replaying other mods' RPCs, LOD bias, lowest sound pitch and terrain load radius.
+- **Playback:** replaying other mods' RPCs, local camera targets, LOD bias, lowest sound pitch and terrain load radius.
 - **Export:** frame rate, resolution, audio and `FfmpegPath`.
 - **UI:** the Tab menu's size, closed sections and camera presets.
 

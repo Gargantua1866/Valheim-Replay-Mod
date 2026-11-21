@@ -11,7 +11,7 @@ namespace ReplayMod
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.gargantua.replaymod";
-        public const string Version = "0.1.3";
+        public const string Version = "0.1.4";
 
         internal static ManualLogSource Log;
         internal static string ReplayDir, BufferDir;
@@ -40,7 +40,7 @@ namespace ReplayMod
         internal static ConfigEntry<float> HiFiRadius;
         internal static ConfigEntry<bool> RecordPose;
         internal static ConfigEntry<float> PoseRate;
-        internal static ConfigEntry<string> ExtraRpcs;
+        internal static ConfigEntry<string> ExtraRpcs, LocalTargets;
         internal static ConfigEntry<bool> ReplayModRpcs;
         internal static ConfigEntry<int> ReplayLoadRadius;
 
@@ -66,6 +66,7 @@ namespace ReplayMod
             RecordPose = Config.Bind("Recording", "RecordPose", true, "Record your own character's final bone pose, so animation mods (and anything else that moves bones) replay exactly as you saw them.");
             PoseRate = Config.Bind("Recording", "PoseRate", 30f, "Pose samples per second.");
             ExtraRpcs = Config.Bind("Playback", "ExtraRpcs", "", "More recorded RPC names to replay, comma-separated, on top of the built-in visual-only list.");
+            LocalTargets = Config.Bind("Playback", "LocalTargets", "Missile", "Component names, comma-separated, of objects that mods create on each machine without a network identity (missiles, for one). The camera can follow, mount on or orbit them in replays.");
             ReplayModRpcs = Config.Bind("Playback", "ReplayModRpcs", true, "Replay other mods' RPCs aimed at recorded objects (weapon fire, effects). Turn off if a mod misbehaves in replays.");
             ReplayLodBias = Config.Bind("Playback", "ReplayLodBias", 7f, "LOD bias in replays, so creatures and small objects are drawn from further away. 0 = leave your setting alone.");
             MinSoundPitch = Config.Bind("Playback", "MinSoundPitch", 0.35f, "In slow motion, sounds slow down with the picture but never below this pitch (lower turns them into a rumble). 0.01 = always match the picture.");

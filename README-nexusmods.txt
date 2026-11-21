@@ -125,7 +125,7 @@ A click seeks. Dragging from the playhead scrubs. Dragging anywhere else selects
 
 Recordings mark deaths, kills, bosses (seen and defeated), teleports and your own marks as colored ticks on the timeline. Hover one, or a camera key, for details.
 
-[b]Targets:[/b] you can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key.
+[b]Targets:[/b] you can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key. Missiles that mods fly on each machine without a network identity work too: follow, mount on or orbit one, and the camera lets go where it explodes. [b]LocalTargets[/b] in the config lists which kinds count (by component name; Missile by default).
 [b]Trim:[/b] in the Tab menu, select a section (or mark a start and an end) and save that part as a new, shorter replay. Camera keys in it are included.
 [b]Screenshots:[/b] F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. "Keep it lit" helps line it up.
 
@@ -138,7 +138,7 @@ Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual 
 Settings are in [b]BepInEx\config\com.gargantua.replaymod.cfg[/b], or in the F1 menu if you have a configuration manager mod installed. The sections are:
 [list]
 [*][b]Recording:[/b] the record, mark and Replay Buffer keys, what gets recorded and at what rate.
-[*][b]Playback:[/b] replaying other mods' RPCs, LOD bias, lowest sound pitch and terrain load radius.
+[*][b]Playback:[/b] replaying other mods' RPCs, local camera targets, LOD bias, lowest sound pitch and terrain load radius.
 [*][b]Export:[/b] frame rate, resolution, audio and FfmpegPath.
 [*][b]UI:[/b] the Tab menu's size, closed sections and camera presets.
 [/list]

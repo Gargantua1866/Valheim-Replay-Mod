@@ -29,6 +29,8 @@ namespace ReplayMod
         public static AttachMode Attach = AttachMode.None;
         public static string AttachName = "";
         private static RecId _target;
+        // Or an object a mod made on this machine alone (no ZDO), when attached to one: see Plugin.LocalTargets.
+        private static Transform _localTarget;
         private static Vector3 _offset;       // Follow: world offset. Mount: offset in the target's frame.
         private static float _localYaw, _localPitch, _localRoll; // Mount and POV: angles in the target's frame.
         private static Vector3 _anchor;       // Follow and Orbit: where the camera thinks the target is (FollowLag).
@@ -96,6 +98,8 @@ namespace ReplayMod
                 Attach = AttachMode.None;
                 return "Camera detached";
             }
+            Transform local = cam && mode != AttachMode.Pov ? AimedLocal(new Ray(cam.transform.position, cam.transform.forward)) : null;
+            if (local) return AttachTo(local, mode);
             ZNetView nv = AimedObject(cam);
             return nv ? AttachTo(nv, mode) : "Aim at a recorded object first (screen center)";
         }
@@ -104,7 +108,20 @@ namespace ReplayMod
         {
             ZDOID id = nv.GetZDO().m_uid;
             _target = new RecId(id.UserID, id.ID);
-            AttachName = NameOf(nv);
+            _localTarget = null;
+            return Attached(NameOf(nv), mode);
+        }
+
+        private static string AttachTo(Transform local, AttachMode mode)
+        {
+            _target = default;
+            _localTarget = local;
+            return Attached(Utils.GetPrefabName(local.gameObject), mode);
+        }
+
+        private static string Attached(string name, AttachMode mode)
+        {
+            AttachName = name;
             Attach = mode;
             _hasOffset = false;
             _lookSettled = false;
@@ -194,10 +211,12 @@ namespace ReplayMod
             return z != null ? ZNetScene.instance.FindInstance(z) : null;
         }
 
-        private static Vector3 CenterOf(ZNetView nv)
+        private static Vector3 CenterOf(ZNetView nv) => CenterOf(nv.transform);
+
+        private static Vector3 CenterOf(Transform t)
         {
-            Character c = nv.GetComponent<Character>();
-            return c ? c.GetCenterPoint() : nv.transform.position;
+            Character c = t.GetComponent<Character>();
+            return c ? c.GetCenterPoint() : t.position;
         }
 
         private static void LookTowards(Vector3 point)
@@ -273,7 +292,32 @@ namespace ReplayMod
             return best;
         }
 
-        private static ZNetView TargetView() => ViewOf(_target);
+        private static ZNetView TargetView() => _localTarget ? null : ViewOf(_target);
+
+        // What the camera rides on: a recorded object, or a local one (gone once it is destroyed).
+        private static Transform TargetTransform() => _localTarget ? _localTarget : TargetView()?.transform;
+
+        // The local object (see Plugin.LocalTargets) nearest the aim line, as AimedProjectile does for projectiles.
+        private static Transform AimedLocal(Ray ray)
+        {
+            var names = new HashSet<string>();
+            foreach (string n in Plugin.LocalTargets.Value.Split(',')) if (n.Trim().Length > 0) names.Add(n.Trim());
+            if (names.Count == 0) return null;
+            Transform best = null;
+            float bestAngle = float.MaxValue;
+            foreach (MonoBehaviour mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (!mb || !mb.isActiveAndEnabled || !names.Contains(mb.GetType().Name) || mb.GetComponent<ZNetView>()) continue;
+                Vector3 to = mb.transform.position - ray.origin;
+                float along = Vector3.Dot(to, ray.direction);
+                if (along <= 0f || along > 300f || Vector3.Cross(ray.direction, to).magnitude > Mathf.Max(0.5f, along * 0.07f)) continue;
+                float angle = Vector3.Angle(ray.direction, to);
+                if (angle >= bestAngle) continue;
+                best = mb.transform;
+                bestAngle = angle;
+            }
+            return best;
+        }
 
         // A light on the camera, lit for screenshots (and while lining one up).
         private static void ApplyFlash(Camera cam)
@@ -297,12 +341,11 @@ namespace ReplayMod
 
         // The frame the camera rides in. Mount: the object itself. POV: the eyes, turned with the body
         // but kept upright, so walking doesn't shake the view.
-        private static void Frame(ZNetView nv, out Vector3 origin, out Quaternion rot)
+        private static void Frame(Transform t, out Vector3 origin, out Quaternion rot)
         {
-            Transform t = nv.transform;
             if (Attach == AttachMode.Pov)
             {
-                Character c = nv.GetComponent<Character>();
+                Character c = t.GetComponent<Character>();
                 rot = Quaternion.Euler(0f, t.eulerAngles.y, 0f);
                 origin = (c ? c.GetEyePoint() : t.position + Vector3.up * 1.7f) + rot * new Vector3(0f, 0.05f, 0.15f);
             }
@@ -435,11 +478,18 @@ namespace ReplayMod
                 // inside the target's own frame (forward, up and mouse look are the object's), then turn
                 // that into world space. Pos and angles end in world space for keys and bookmarks.
                 // If the target isn't there at this time (seeked before it appeared), fly freely.
-                ZNetView target = Attach != AttachMode.None ? TargetView() : null;
+                // A local target is destroyed when it's done (a missile explodes): let go, keeping the view there.
+                if (Attach != AttachMode.None && !(_localTarget is null) && !_localTarget)
+                {
+                    Attach = AttachMode.None;
+                    _localTarget = null;
+                    ReplayUI.Notify($"{AttachName} is gone: camera detached");
+                }
+                Transform target = Attach != AttachMode.None ? TargetTransform() : null;
                 if (!target) Steer(dt);
                 else if (Attach == AttachMode.Follow || Attach == AttachMode.Orbit)
                 {
-                    Vector3 at = target.transform.position;
+                    Vector3 at = target.position;
                     // A seek can move the target far away at once: don't glide all the way there.
                     float lag = Attach == AttachMode.Orbit ? Mathf.Max(FollowLag, LookSmoothing) : FollowLag;
                     bool snap = !_hasOffset || lag <= 0f || (at - _anchor).sqrMagnitude > 2500f;

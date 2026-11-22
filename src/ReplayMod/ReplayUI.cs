@@ -1058,14 +1058,19 @@ namespace ReplayMod
             }
             // Speed track: the replay speed at this key while following the path. The camera keeps
             // its pace, so slow motion doesn't slow the camera move.
-            Ui.Label($"Replay speed here while following: {at.speed:0.##}x");
+            // With this key among several selected ones, a speed goes to all of them.
+            bool many = _picked.Count > 1 && _picked.Contains(at);
+            Ui.Label(many ? $"Replay speed while following, {_picked.Count} selected keys: {at.speed:0.##}x"
+                : $"Replay speed here while following: {at.speed:0.##}x");
             GUILayout.BeginHorizontal();
             foreach (float sp in Speeds)
             {
-                if (Ui.Toggle(Mathf.Approximately(at.speed, sp), $"{sp:0.##}x", GUI.skin.button) && !Mathf.Approximately(at.speed, sp))
+                bool on = many ? _picked.All(k => Mathf.Approximately(k.speed, sp)) : Mathf.Approximately(at.speed, sp);
+                if (Ui.Toggle(on, $"{sp:0.##}x", GUI.skin.button) && !on)
                 {
-                    CameraPath.Snapshot("change key speed");
-                    at.speed = sp;
+                    CameraPath.Snapshot(many ? $"change speed of {_picked.Count} keys" : "change key speed");
+                    if (many) foreach (CameraPath.Key k in _picked) k.speed = sp;
+                    else at.speed = sp;
                     CameraPath.Changed();
                 }
             }

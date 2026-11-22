@@ -48,8 +48,47 @@ namespace ReplayMod
             string file = Path.Combine(dir, $"{ReplayName}_{ReplaySession.T:0000.00}s_{DateTime.Now:HHmmss}.png");
             _shotFrame = Time.frameCount;
             _flashUntil = Time.frameCount + 1;
-            ScreenCapture.CaptureScreenshot(file, Mathf.Clamp(Plugin.ScreenshotScale.Value, 1, 4));
+            int scale = Mathf.Clamp(Plugin.ScreenshotScale.Value, 1, 4);
+            // Above 1x, like a video export: Unity's larger capture leaves out FarLands' distant objects.
+            Camera cam = GameCamera.instance ? GameCamera.instance.GetComponent<Camera>() : null;
+            if (scale > 1 && cam && !GameHudShown()) Plugin.Instance.StartCoroutine(BigShot(file, cam, scale));
+            else ScreenCapture.CaptureScreenshot(file, scale);
             return file;
+        }
+
+        // The camera renders the next frame into a texture at the larger size, which is saved and shown scaled down.
+        // The next frame, because a click in the menu comes after this frame's render.
+        private static IEnumerator BigShot(string file, Camera cam, int scale)
+        {
+            var big = new RenderTexture(Screen.width * scale, Screen.height * scale, 24, RenderTextureFormat.ARGB32) { name = "Replay Mod screenshot" };
+            big.Create();
+            RenderTexture was = cam.targetTexture;
+            cam.targetTexture = big;
+            yield return null;
+            _shotFrame = Time.frameCount;
+            _flashUntil = Time.frameCount + 1;
+            yield return new WaitForEndOfFrame();
+            var tex = new Texture2D(big.width, big.height, TextureFormat.RGB24, false);
+            try
+            {
+                RenderTexture.active = big;
+                tex.ReadPixels(new Rect(0, 0, big.width, big.height), 0, 0, false);
+                RenderTexture.active = null;
+                Graphics.Blit(big, (RenderTexture)null);
+                File.WriteAllBytes(file, tex.EncodeToPNG());
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                Plugin.Log.LogWarning($"screenshot {file}: {e.Message}");
+            }
+            finally
+            {
+                RenderTexture.active = null;
+                if (cam) cam.targetTexture = was;
+                big.Release();
+                UnityEngine.Object.Destroy(big);
+                UnityEngine.Object.Destroy(tex);
+            }
         }
 
         // A small picture of this frame for the replay list, without the overlays.
@@ -230,12 +269,14 @@ namespace ReplayMod
             int fps = Plugin.ExportFps.Value;
             int scale = Mathf.Clamp(Plugin.ExportScale.Value, 1, 4);
             string ffmpeg = FindFfmpeg();
+            Plugin.Codec codec = Pick(Screen.width * scale, Screen.height * scale, fps);
+            string ext = codec == Plugin.Codec.ProRes ? ".mov" : ".mp4";
             string name = $"{ReplayName}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}";
             Directory.CreateDirectory(Plugin.ExportDir);
-            string videoOnly = Path.Combine(Plugin.ExportDir, name + (Plugin.ExportAudio.Value ? "_video.mp4" : ".mp4"));
+            string videoOnly = Path.Combine(Plugin.ExportDir, name + (Plugin.ExportAudio.Value ? "_video" : "") + ext);
             string wav = Path.Combine(Plugin.ExportDir, name + ".wav");
-            string final = Path.Combine(Plugin.ExportDir, name + ".mp4");
-            Plugin.Log.LogInfo($"export {start:0.00}-{end:0.00} s at {fps} fps x{scale} to {videoOnly}");
+            string final = Path.Combine(Plugin.ExportDir, name + ext);
+            Plugin.Log.LogInfo($"export {start:0.00}-{end:0.00} s at {fps} fps x{scale} as {codec} to {videoOnly}");
 
             float volume = AudioListener.volume;
             Process proc = null;
@@ -317,7 +358,7 @@ namespace ReplayMod
                     if (proc == null)
                     {
                         proc = StartFfmpeg(ffmpeg, $"-y -f rawvideo -pix_fmt {PixFmt(tex.format)} -s {tex.width}x{tex.height} -r {fps} -i - " +
-                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 -c:v libx264 -preset medium -crf 16 -pix_fmt yuv420p \"{videoOnly}\"", stdin: true);
+                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 {EncoderArgs(codec)} \"{videoOnly}\"", stdin: true);
                         pipe = proc.StandardInput.BaseStream;
                     }
                     byte[] raw = tex.GetRawTextureData();
@@ -426,6 +467,45 @@ namespace ReplayMod
             }
         }
 
+        // Windows' decoder and most players handle H.264 only up to level 5.2: 36864 macroblocks a frame and
+        // 2073600 a second (4K at 60 fps). Past that x264 writes level 6, which they show as a corrupted video.
+        private static bool FitsH264(int w, int h, int fps)
+        {
+            long mb = (long)((w + 15) / 16) * ((h + 15) / 16);
+            return mb <= 36864 && mb * fps <= 2073600;
+        }
+
+        private static Plugin.Codec Pick(int w, int h, int fps) =>
+            Plugin.ExportCodec.Value != Plugin.Codec.Auto ? Plugin.ExportCodec.Value : FitsH264(w, h, fps) ? Plugin.Codec.H264 : Plugin.Codec.H265;
+
+        public static string CodecName(Plugin.Codec c) => c switch
+        {
+            Plugin.Codec.H264 => "H.264",
+            Plugin.Codec.H265 => "H.265",
+            Plugin.Codec.AV1 => "AV1",
+            Plugin.Codec.ProRes => "ProRes",
+            _ => "Auto",
+        };
+
+        // What the menu's Auto means for the current size and frame rate.
+        public static Plugin.Codec AutoCodec() =>
+            FitsH264(Screen.width * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4), Screen.height * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4), Plugin.ExportFps.Value) ? Plugin.Codec.H264 : Plugin.Codec.H265;
+
+        private static string EncoderArgs(Plugin.Codec c) => c switch
+        {
+            // hvc1 so Apple players and editors take it too
+            Plugin.Codec.H265 => "-c:v libx265 -preset medium -crf 18 -tag:v hvc1 -x265-params log-level=error -pix_fmt yuv420p",
+            Plugin.Codec.AV1 => "-c:v libsvtav1 -preset 8 -crf 26 -pix_fmt yuv420p",
+            Plugin.Codec.ProRes => "-c:v prores_ks -profile:v 3 -pix_fmt yuv422p10le",
+            _ => "-c:v libx264 -preset medium -crf 16 -pix_fmt yuv420p",
+        };
+
+        public static void SelfCheck()
+        {
+            if (!FitsH264(3840, 2160, 60) || !FitsH264(1920, 1080, 144) || FitsH264(5760, 3240, 30) || FitsH264(3840, 2160, 120))
+                Plugin.Log.LogError("export codec self-check FAILED");
+        }
+
         // The game HUD, or its health bars and damage numbers, are on in the replay.
         private static bool GameHudShown() => ReplayUI.CombatHud || (Hud.instance && !Hud.instance.m_userHidden);
 
@@ -475,6 +555,7 @@ namespace ReplayMod
                 RedirectStandardInput = stdin,
                 RedirectStandardError = true,
             };
+            psi.EnvironmentVariables["SVT_LOG"] = "1"; // SVT-AV1 prints its settings otherwise, errors only
             var p = new Process { StartInfo = psi };
             p.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) Plugin.Log.LogWarning($"ffmpeg: {e.Data}"); };
             p.Start();

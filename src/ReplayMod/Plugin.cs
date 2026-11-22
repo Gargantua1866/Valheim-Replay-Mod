@@ -19,6 +19,8 @@ namespace ReplayMod
         internal static ConfigEntry<float> ReplayBufferMinutes;
         internal static ConfigEntry<KeyboardShortcut> ReplayBufferKey, ReplayBufferToggleKey;
         internal static ConfigEntry<bool> ExportOpen;
+        internal enum Codec { Auto, H264, H265, AV1, ProRes }
+        internal static ConfigEntry<Codec> ExportCodec;
 
         internal static ConfigEntry<KeyboardShortcut> RecordKey, MarkKey;
         internal static ConfigEntry<float> SampleRate;
@@ -80,6 +82,7 @@ namespace ReplayMod
             MenuHeight = Config.Bind("UI", "MenuHeight", 640f, "Replay menu height.");
             ExportFps = Config.Bind("Export", "FrameRate", 60, new ConfigDescription("Video frame rate.", new AcceptableValueList<int>(24, 30, 60, 120, 144)));
             ExportScale = Config.Bind("Export", "ResolutionScale", 1, new ConfigDescription("Video size as a multiple of the game window (2 = supersampled).", new AcceptableValueRange<int>(1, 4)));
+            ExportCodec = Config.Bind("Export", "Codec", Codec.Auto, "Video codec, from FFmpeg. Auto = H.264, or H.265 when the video is too large or fast for H.264 players (above 4K at 60 fps). ProRes is for video editors and makes very large .mov files.");
             ExportAudio = Config.Bind("Export", "Audio", true, "After the video, play the range again in real time to record its sound and merge it into the MP4.");
             FfmpegPath = Config.Bind("Export", "FfmpegPath", "", "ffmpeg.exe, which export needs. Empty = look in WinGet's folder and on PATH.");
             ScreenshotScale = Config.Bind("Export", "ScreenshotScale", 1, new ConfigDescription("Screenshot size as a multiple of the game window.", new AcceptableValueRange<int>(1, 4)));
@@ -105,6 +108,7 @@ namespace ReplayMod
             CameraPath.SelfCheck();
             Clipper.SelfCheck();
             ReplayUI.SelfCheck();
+            Exporter.SelfCheck();
             ReplaySession.SelfCheck();
             if (!FreeCam.PresetFromText(FreeCam.PresetToText())) Log.LogError("camera preset self-check FAILED");
             Log.LogInfo($"Replay Mod {Version} loaded; replays in {ReplayDir}");

@@ -433,6 +433,13 @@ namespace ReplayMod
         }
         private static string LookText() => FreeCam.LookName != null ? $"   LOOKING AT {FreeCam.LookName}" : "";
         private static CameraPath.Key _dragKey;
+        // A key moves only once the mouse has gone a few pixels, and keeps where it was grabbed: a click to select
+        // it used to nudge it.
+        private const float KeyDragStart = 5f;
+        private static float _keyPressX, _keyGrab;
+        // Dragging along the key row selects the keys in that stretch (Shift adds them).
+        private static bool _boxing, _boxAdd;
+        private static float _boxFrom;
         private static float _lastDragSeek;
 
         private static void Timeline()
@@ -535,16 +542,19 @@ namespace ReplayMod
                         if (!_picked.Contains(k)) _picked.Clear();
                         _dragKey = k;
                         _dragMoved = false;
+                        _keyPressX = mouse.x;
+                        _keyGrab = Mathf.Clamp01((mouse.x - track.x) / track.width) * dur - k.t;
                     }
                     e.Use();
                 }
             }
             if (_dragKey != null)
             {
-                if (e.type == EventType.MouseDrag)
+                if (e.type == EventType.MouseDrag && !_dragMoved && Mathf.Abs(mouse.x - _keyPressX) < KeyDragStart) e.Use();
+                else if (e.type == EventType.MouseDrag)
                 {
                     if (!_dragMoved) CameraPath.Snapshot(_picked.Count > 1 ? $"move {_picked.Count} keys" : "move key");
-                    float to = Mathf.Clamp01((mouse.x - track.x) / track.width) * dur;
+                    float to = Mathf.Clamp(Mathf.Clamp01((mouse.x - track.x) / track.width) * dur - _keyGrab, 0f, dur);
                     // Snaps to markers within a few pixels; Alt turns that off.
                     if (!e.alt)
                     {
@@ -572,6 +582,37 @@ namespace ReplayMod
                     _dragKey = null;
                     e.Use();
                 }
+            }
+
+            // The row the keys sit in: dragging across it selects the keys in that stretch.
+            Rect keyRow = new Rect(track.x, track.y - 16f, track.width, 12f);
+            if (e.type == EventType.MouseDown && e.button == 0 && _dragKey == null && keyRow.Contains(mouse))
+            {
+                _boxing = true;
+                _boxAdd = e.shift;
+                _boxFrom = mouse.x;
+                e.Use();
+            }
+            else if (_boxing && e.type == EventType.MouseDrag) e.Use();
+            else if (_boxing && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
+            {
+                _boxing = false;
+                float a = Mathf.Min(_boxFrom, mouse.x), b = Mathf.Max(_boxFrom, mouse.x);
+                if (!_boxAdd) _picked.Clear();
+                if (b - a >= 3f)
+                {
+                    foreach (CameraPath.Key k in CameraPath.Keys)
+                    {
+                        float x = track.x + track.width * k.t / dur;
+                        if (x >= a - 6f && x <= b + 6f) _picked.Add(k);
+                    }
+                }
+                e.Use();
+            }
+            if (_boxing)
+            {
+                float a = Mathf.Min(_boxFrom, mouse.x), b = Mathf.Max(_boxFrom, mouse.x);
+                UiStyle.Fill(new Rect(a, keyRow.y - 2f, b - a, keyRow.height + 4f), new Color(1f, 0.4f, 0.15f, 0.3f));
             }
 
             Rect hit = new Rect(track.x, track.y - 2f, track.width, track.height + 8f);
@@ -951,7 +992,7 @@ namespace ReplayMod
             }
             if (Ui.Button($"Select none ({_picked.Count})")) _picked.Clear();
             GUILayout.EndHorizontal();
-            Ui.Label("Shift+click keys on the timeline to select them: they drag and delete together. Dragging snaps to markers (Alt: no snap).");
+            Ui.Label("Shift+click keys on the timeline, or drag along the row they sit in, to select them: they drag and delete together. Dragging snaps to markers (Alt: no snap).");
             if (Ui.Button(FreeCam.Take != null ? "Stop take (N)" : $"Record a take at {ReplaySession.Speed:0.##}x: fly by hand, saved as keys (N)")) ToggleTake();
             Ui.Label("Whole path speed (up/down while following):");
             GUILayout.BeginHorizontal();

@@ -565,7 +565,7 @@ namespace ReplayMod
             float t0 = s > 0 ? k[s - 1] : t1 - (t2 - t1);
             float t3 = s + 2 < n ? k[s + 2] : t2 + (t2 - t1);
             float[] p0 = s > 0 ? p[s - 1] : p[s], p3 = s + 2 < n ? p[s + 2] : p[s + 1];
-            return BarryGoldman(p0, p[s], p[s + 1], p3, t0, t1, t2, t3, t);
+            return Segment(p0, p[s], p[s + 1], p3, t0, t1, t2, t3, t);
         }
 
         // Speed track. Each key has a replay speed; between keys the speed changes linearly in output
@@ -613,16 +613,57 @@ namespace ReplayMod
         public static float OutputTime(float t) => Map(t, Tau(), out _);
 
         // Catmull-Rom with arbitrary knot times (Barry & Goldman's pyramidal form).
-        private static float[] BarryGoldman(float[] p0, float[] p1, float[] p2, float[] p3, float t0, float t1, float t2, float t3, float t)
+        // The time-parameterized Catmull-Rom curve, as a Hermite segment from p1 to p2. Each end's speed comes from
+        // the neighboring keys; across a long, short segment (two close keys with far neighbors) that speed kept
+        // up the whole time and the camera flew a long loop out and back. So each end moves at most twice the
+        // segment's own change over the segment: the position as one vector, each angle and the FOV on their own.
+        private const float TangentLimit = 2f;
+
+        private static float[] Segment(float[] p0, float[] p1, float[] p2, float[] p3, float t0, float t1, float t2, float t3, float t)
         {
-            var r = new float[Dims];
+            float h = t2 - t1;
+            var m1 = new float[Dims];
+            var m2 = new float[Dims];
             for (int d = 0; d < Dims; d++)
             {
-                float a1 = Lerp(p0[d], p1[d], t0, t1, t), a2 = Lerp(p1[d], p2[d], t1, t2, t), a3 = Lerp(p2[d], p3[d], t2, t3, t);
-                float b1 = Lerp(a1, a2, t0, t2, t), b2 = Lerp(a2, a3, t1, t3, t);
-                r[d] = Lerp(b1, b2, t1, t2, t);
+                m1[d] = Tangent(p0[d], p1[d], p2[d], t0, t1, t2) * h;
+                m2[d] = Tangent(p1[d], p2[d], p3[d], t1, t2, t3) * h;
             }
+            float chord = Mathf.Sqrt(Sq(p2[0] - p1[0]) + Sq(p2[1] - p1[1]) + Sq(p2[2] - p1[2])) * TangentLimit;
+            LimitPosition(m1, chord);
+            LimitPosition(m2, chord);
+            for (int d = 3; d < Dims; d++)
+            {
+                float cap = Mathf.Abs(p2[d] - p1[d]) * TangentLimit;
+                m1[d] = Mathf.Clamp(m1[d], -cap, cap);
+                m2[d] = Mathf.Clamp(m2[d], -cap, cap);
+            }
+            float u = h > 1e-6f ? Mathf.Clamp01((t - t1) / h) : 1f;
+            float u2 = u * u, u3 = u2 * u;
+            float h00 = 2f * u3 - 3f * u2 + 1f, h10 = u3 - 2f * u2 + u, h01 = -2f * u3 + 3f * u2, h11 = u3 - u2;
+            var r = new float[Dims];
+            for (int d = 0; d < Dims; d++) r[d] = h00 * p1[d] + h10 * m1[d] + h01 * p2[d] + h11 * m2[d];
             return r;
+        }
+
+        private static float Sq(float x) => x * x;
+
+        // The curve's rate of change at b: the two neighboring slopes, each weighted by the other's length.
+        private static float Tangent(float a, float b, float c, float ta, float tb, float tc)
+        {
+            float v0 = tb - ta > 1e-6f ? (b - a) / (tb - ta) : 0f, v1 = tc - tb > 1e-6f ? (c - b) / (tc - tb) : 0f;
+            float w = tc - ta;
+            return w > 1e-6f ? (v0 * (tc - tb) + v1 * (tb - ta)) / w : 0f;
+        }
+
+        private static void LimitPosition(float[] m, float max)
+        {
+            float len = Mathf.Sqrt(Sq(m[0]) + Sq(m[1]) + Sq(m[2]));
+            if (len <= max || len < 1e-9f) return;
+            float k = max / len;
+            m[0] *= k;
+            m[1] *= k;
+            m[2] *= k;
         }
 
         private static float Lerp(float a, float b, float ta, float tb, float t) => tb - ta < 1e-5f ? a : a + (b - a) * (t - ta) / (tb - ta);
@@ -641,6 +682,20 @@ namespace ReplayMod
             }
             Evaluate(2.5f, out Vector3 mid, out float myaw, out _, out _, out _);
             ok &= mid.x > 10f && mid.x < 20f && Mathf.Abs(Mathf.DeltaAngle(myaw, 185f)) < 6f; // crosses 180 the short way
+            // Two close keys far apart in time, with far neighbors: a short curve between them, not a long loop.
+            var spread = new List<Key>(Keys);
+            Keys.Clear();
+            Keys.Add(new Key { t = 0f, pos = new Vector3(0f, 0f, 0f), fov = 60f });
+            Keys.Add(new Key { t = 1f, pos = new Vector3(100f, 0f, 0f), fov = 60f });
+            Keys.Add(new Key { t = 6f, pos = new Vector3(101f, 0f, 0f), fov = 60f });
+            Keys.Add(new Key { t = 7f, pos = new Vector3(201f, 0f, 0f), fov = 60f });
+            for (float st = 1f; st <= 6f; st += 0.25f)
+            {
+                Evaluate(st, out Vector3 close, out _, out _, out _, out _);
+                ok &= close.x > 99f && close.x < 102f;
+            }
+            Keys.Clear();
+            Keys.AddRange(spread);
             Keys[1].ease = Ease.Hold;
             Evaluate(2.5f, out Vector3 held, out _, out _, out _, out _);
             Keys[1].ease = Ease.Linear;

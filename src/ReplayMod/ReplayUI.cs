@@ -1497,7 +1497,9 @@ namespace ReplayMod
                         _bitrateShown = Exporter.MenuKbps();
                     }
                 }
-                Ui.Label(Plugin.ExportBitrate.Value > 0 ? "typed" : "usual for this codec and size");
+                int most = Exporter.MaxKbps(Exporter.MenuCodec());
+                Ui.Label(Plugin.ExportBitrate.Value > most ? $"{Exporter.CodecName(Exporter.MenuCodec())} goes up to {most}"
+                    : Plugin.ExportBitrate.Value > 0 ? "typed" : "usual for this codec and size");
                 GUILayout.EndHorizontal();
             }
             Plugin.ExportAudio.Value = Ui.Toggle(Plugin.ExportAudio.Value, "Sound (plays the range again in real time afterwards)");

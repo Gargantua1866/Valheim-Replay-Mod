@@ -399,7 +399,8 @@ namespace ReplayMod
             {
                 try { pipe.Close(); } catch (Exception) { /* ffmpeg already gone */ }
                 while (!proc.HasExited) yield return null;
-                if (proc.ExitCode != 0 && error == null) error = $"FFmpeg exited with code {proc.ExitCode} (see the BepInEx log)";
+                // A write to a closed pipe only says "Win32 IO returned 232"; what FFmpeg said is the reason.
+                if (proc.ExitCode != 0) error = _ffmpegSaid != null ? $"FFmpeg: {_ffmpegSaid}" : error ?? $"FFmpeg exited with code {proc.ExitCode} (see the BepInEx log)";
             }
 
             // Audio pass, in real time.
@@ -502,7 +503,15 @@ namespace ReplayMod
             return 1000 * Mathf.Max(1, Mathf.RoundToInt(at1080p60 * Mathf.Pow((float)w * h * fps / (1920f * 1080f * 60f), 0.75f)));
         }
 
-        private static int Kbps(Plugin.Codec c, int w, int h, int fps) => Plugin.ExportBitrate.Value > 0 ? Plugin.ExportBitrate.Value : UsualKbps(c, w, h, fps);
+        private static int Kbps(Plugin.Codec c, int w, int h, int fps) =>
+            Mathf.Min(Plugin.ExportBitrate.Value > 0 ? Plugin.ExportBitrate.Value : UsualKbps(c, w, h, fps), MaxKbps(c));
+
+        // SVT-AV1 refuses a target above 100000 Kbps. H.264 above 200000 (peaks to 300000) is level 6,
+        // which players show as corrupted, as with frames too large for it.
+        public static int MaxKbps(Plugin.Codec c) => c == Plugin.Codec.AV1 ? 100000 : c == Plugin.Codec.H264 ? 200000 : 1000000;
+
+        // The codec the next export uses, for the menu.
+        public static Plugin.Codec MenuCodec() => Pick(MenuWidth, MenuHeight, Plugin.ExportFps.Value);
 
         // The bitrate box: the typed one, or the usual for the chosen codec, size and frame rate.
         public static int MenuKbps()
@@ -513,7 +522,9 @@ namespace ReplayMod
 
         private static string EncoderArgs(Plugin.Codec c, int k)
         {
-            string rate = $"-b:v {k}k -maxrate {k * 3 / 2}k -bufsize {k * 2}k";
+            // H.264 level 5.2 allows 300000 for both the peak rate and the buffer.
+            int cap = c == Plugin.Codec.H264 ? 300000 : int.MaxValue;
+            string rate = $"-b:v {k}k -maxrate {Mathf.Min(k * 3 / 2, cap)}k -bufsize {Mathf.Min(k * 2, cap)}k";
             return c switch
             {
                 // hvc1 so Apple players and editors take it too
@@ -571,6 +582,8 @@ namespace ReplayMod
             }
         }
 
+        private static volatile string _ffmpegSaid; // FFmpeg's first error line, from its stderr thread
+
         private static Process StartFfmpeg(string exe, string args, bool stdin)
         {
             var psi = new ProcessStartInfo(exe, "-hide_banner -loglevel error " + args)
@@ -582,7 +595,13 @@ namespace ReplayMod
             };
             psi.EnvironmentVariables["SVT_LOG"] = "1"; // SVT-AV1 prints its settings otherwise, errors only
             var p = new Process { StartInfo = psi };
-            p.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) Plugin.Log.LogWarning($"ffmpeg: {e.Data}"); };
+            _ffmpegSaid = null;
+            p.ErrorDataReceived += (s, e) =>
+            {
+                if (string.IsNullOrEmpty(e.Data)) return;
+                Plugin.Log.LogWarning($"ffmpeg: {e.Data}");
+                if (_ffmpegSaid == null) _ffmpegSaid = e.Data;
+            };
             p.Start();
             p.BeginErrorReadLine();
             return p;

@@ -24,6 +24,10 @@ namespace ReplayMod
         public static Span Range = Span.CameraPath;
         public static bool Busy { get; private set; }
         public static bool RecordingSound { get; private set; }
+        // Time holds while another mod finishes drawing the view (FarLands' distant land); those frames aren't the video.
+        public static bool Holding { get; private set; }
+        private static float _waitSince = -1f;
+        private const float FarLandsWait = 20f; // real seconds; past it the export goes on with what is there
         public static string Status = "";
         public static bool HideUi => Busy || _shotFrame == Time.frameCount;
 
@@ -252,6 +256,19 @@ namespace ReplayMod
                     yield return null;
                     continue;
                 }
+                if (FarLandsCompat.Building)
+                {
+                    if (_waitSince < 0f) _waitSince = Time.realtimeSinceStartup;
+                    if (Time.realtimeSinceStartup - _waitSince < FarLandsWait)
+                    {
+                        Holding = true;
+                        Status = "Exporting video: waiting for FarLands' distant land";
+                        yield return null;
+                        continue;
+                    }
+                }
+                else _waitSince = -1f;
+                Holding = false;
                 yield return new WaitForEndOfFrame();
                 Texture2D tex = ScreenCapture.CaptureScreenshotAsTexture(scale);
                 try
@@ -279,6 +296,8 @@ namespace ReplayMod
                 }
             }
             Time.captureFramerate = 0;
+            Holding = false;
+            _waitSince = -1f;
             AudioListener.volume = volume;
             ReplaySession.Paused = true;
             if (proc != null)

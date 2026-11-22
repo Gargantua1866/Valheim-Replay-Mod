@@ -290,7 +290,7 @@ namespace ReplayMod
                 _seekAfterJump = false;
                 Seek(T);
             }
-            if (!Paused && !Game.IsPaused() && !(Loading && Exporter.Busy && !Exporter.RecordingSound))
+            if (!Paused && !Game.IsPaused() && !((Loading || Exporter.Holding) && Exporter.Busy && !Exporter.RecordingSound))
             {
                 T += Time.deltaTime;
                 if (T >= Duration)

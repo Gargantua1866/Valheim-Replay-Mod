@@ -92,7 +92,7 @@ Hold ←, →, [, ], comma or period to keep going. Sound pitch follows the repl
 
 To make a path, fly to a pose, move the timeline and press K. Repeat for each pose. Press P and play, and the camera glides through every key on a smooth curve. The key timing sets its speed, and FOV and roll animate too.
 
-- **On the timeline:** keys show as squares above it. Click one to jump to it, double-click to put the camera exactly on it, drag it to retime it, and right-click to delete it. Shift+click selects several, which then drag and delete together. Dragging snaps to markers unless you hold Alt.
+- **On the timeline:** keys show as squares above it. Click one to jump to it, double-click to put the camera exactly on it, drag it to retime it, and right-click to delete it. Shift+click selects several, and so does dragging along the row the keys sit in (with Shift it adds to the selection). Selected keys drag and delete together. A key moves only after a short drag, so a click to select it leaves it in place. Dragging snaps to markers unless you hold Alt.
 - **Exact values:** the Tab menu has fields for the key's time, FOV and roll. Enter applies.
 - **Re-posing:** pressing K at a key's time replaces that key's pose.
 - **Easing:** each move from one key to the next can be Smooth, Ease in/out (stops at both keys), Ease in, Ease out, Linear or Hold. Set it in the Tab menu.
@@ -136,7 +136,7 @@ F9 takes a screenshot. The Export section has brightness, exposure and a camera 
 
 ### Export
 
-F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress; it isn't in the video. At 2x or more, the game's motion blur and antialiasing are off for the export. Files go to `...\ReplayMod\exports`.
+F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress and the time left; it isn't in the video. At 2x or more the camera renders straight at the video size. With the game HUD on, Unity's larger capture is used instead, with the game's motion blur and antialiasing off for the export. Files go to `...\ReplayMod\exports`.
 
 Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
 

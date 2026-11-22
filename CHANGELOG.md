@@ -5,8 +5,10 @@
 - The camera can follow, mount on or orbit missiles that mods fly on each machine without a network identity. It lets go when the missile explodes. `LocalTargets` in the config sets which kinds count.
 - Exports wait for FarLands to finish drawing its distant land, so it shows in the video as it does while watching.
 - With several camera keys selected, the replay speed buttons in the Tab menu set all of them at once.
-- Exports at 2x or more turn off the game's motion blur and antialiasing for the export, which blurred some 4K and 6K videos. Supersampling smooths the edges anyway.
-- A small box in the corner shows the export's progress, and that F10 cancels. It isn't in the video.
+- Exports at 2x or more render the camera straight at the video size. Unity's larger capture left out FarLands' distant trees, rocks and buildings, and blurred some 4K and 6K videos. With the game HUD on, the old capture is kept, with the game's motion blur and antialiasing off for the export.
+- A small box in the corner shows the export's progress, the time left and that F10 cancels. It isn't in the video.
+- Clicking a camera key to select it no longer nudges it: a key moves only after a short drag, and keeps the spot where it was grabbed.
+- Dragging along the row the keys sit in selects every key in that stretch. Shift adds them to the selection.
 - A camera path between two keys close together no longer swings out in a long loop when the keys around them are far away.
 
 ## 0.1.3

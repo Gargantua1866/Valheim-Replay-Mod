@@ -242,9 +242,24 @@ namespace ReplayMod
             Stream pipe = null;
             int frames = 0;
             string error = null;
-            // A capture above 1x is a second render of the frame at the larger size, and effects that blend in
-            // earlier frames (motion blur, the antialiasing) smeared it. Supersampling smooths the edges anyway.
-            PostProcessingProfile post = scale > 1 ? Camera.main?.GetComponent<PostProcessingBehaviour>()?.profile : null;
+            // Above 1x the game camera renders each frame once, at the export size, into a texture the frame is read
+            // from (the screen shows it scaled down). Unity's own larger capture is a second render, which left out
+            // what mods queue for the camera's frame (FarLands' trees, rocks and buildings) and smeared motion blur
+            // and antialiasing. The game HUD is drawn over the screen, not by the camera: with it on, the old capture
+            // is kept, without the two effects that blend earlier frames.
+            Camera cam = GameCamera.instance ? GameCamera.instance.GetComponent<Camera>() : null;
+            bool direct = scale > 1 && cam && !GameHudShown();
+            RenderTexture big = null, camWas = null;
+            Texture2D frame = null;
+            if (direct)
+            {
+                big = new RenderTexture(Screen.width * scale, Screen.height * scale, 24, RenderTextureFormat.ARGB32) { name = "Replay Mod export" };
+                big.Create();
+                frame = new Texture2D(big.width, big.height, TextureFormat.RGB24, false);
+                camWas = cam.targetTexture;
+                cam.targetTexture = big;
+            }
+            PostProcessingProfile post = scale > 1 && !direct ? Camera.main?.GetComponent<PostProcessingBehaviour>()?.profile : null;
             bool blurWas = post && post.motionBlur.enabled, aaWas = post && post.antialiasing.enabled;
             if (post)
             {
@@ -257,6 +272,9 @@ namespace ReplayMod
             Time.captureFramerate = fps;
             ReplaySession.Paused = false;
             float nextLog = 0f;
+            // For the time left: the video pass by its pace so far, then the sound pass, which runs in real time.
+            float videoSince = Time.realtimeSinceStartup;
+            float soundSeconds = Plugin.ExportAudio.Value ? SoundSeconds(start, end) : 0f;
             while (!_cancel && ReplaySession.Active && ReplaySession.T < end - 1e-4f && error == null)
             {
                 if (ReplaySession.Loading)
@@ -264,7 +282,8 @@ namespace ReplayMod
                     // Time holds while the destination of a far jump loads; those frames aren't the video.
                     Status = "Exporting video: loading";
                     yield return new WaitForEndOfFrame();
-                    ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
+                    if (big) Graphics.Blit(big, (RenderTexture)null);
+                    ExportOverlay.Draw(Status + Left(videoSince, Mathf.InverseLerp(start, end, ReplaySession.T), soundSeconds), Mathf.InverseLerp(start, end, ReplaySession.T));
                     continue;
                 }
                 if (FarLandsCompat.Building)
@@ -275,14 +294,24 @@ namespace ReplayMod
                         Holding = true;
                         Status = "Exporting video: waiting for FarLands' distant land";
                         yield return new WaitForEndOfFrame();
-                        ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
+                        if (big) Graphics.Blit(big, (RenderTexture)null);
+                        ExportOverlay.Draw(Status + Left(videoSince, Mathf.InverseLerp(start, end, ReplaySession.T), soundSeconds), Mathf.InverseLerp(start, end, ReplaySession.T));
                         continue;
                     }
                 }
                 else _waitSince = -1f;
                 Holding = false;
                 yield return new WaitForEndOfFrame();
-                Texture2D tex = ScreenCapture.CaptureScreenshotAsTexture(scale);
+                Texture2D tex;
+                if (big)
+                {
+                    RenderTexture.active = big;
+                    frame.ReadPixels(new Rect(0, 0, big.width, big.height), 0, 0, false);
+                    RenderTexture.active = null;
+                    tex = frame;
+                    Graphics.Blit(big, (RenderTexture)null);
+                }
+                else tex = ScreenCapture.CaptureScreenshotAsTexture(scale);
                 try
                 {
                     if (proc == null)
@@ -299,9 +328,9 @@ namespace ReplayMod
                 {
                     error = e.Message;
                 }
-                UnityEngine.Object.Destroy(tex);
+                if (tex != frame) UnityEngine.Object.Destroy(tex);
                 Status = $"Exporting video: {Mathf.InverseLerp(start, end, ReplaySession.T) * 100f:0}% ({frames} frames)";
-                ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
+                ExportOverlay.Draw(Status + Left(videoSince, Mathf.InverseLerp(start, end, ReplaySession.T), soundSeconds), Mathf.InverseLerp(start, end, ReplaySession.T));
                 if (Time.unscaledTime >= nextLog)
                 {
                     nextLog = Time.unscaledTime + 5f;
@@ -309,6 +338,13 @@ namespace ReplayMod
                 }
             }
             Time.captureFramerate = 0;
+            if (big)
+            {
+                if (cam) cam.targetTexture = camWas;
+                big.Release();
+                UnityEngine.Object.Destroy(big);
+                UnityEngine.Object.Destroy(frame);
+            }
             if (post)
             {
                 post.motionBlur.enabled = blurWas;
@@ -339,7 +375,7 @@ namespace ReplayMod
                     {
                         Status = $"Recording sound (real time): {Mathf.InverseLerp(start, end, ReplaySession.T) * 100f:0}%";
                         yield return new WaitForEndOfFrame();
-                        ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
+                        ExportOverlay.Draw(Status + $"   about {Duration(soundSeconds * (1f - Mathf.InverseLerp(start, end, ReplaySession.T)))} left", Mathf.InverseLerp(start, end, ReplaySession.T));
                     }
                     ReplaySession.Paused = true;
                     RecordingSound = false;
@@ -389,6 +425,27 @@ namespace ReplayMod
                 catch (Exception e) when (e is System.ComponentModel.Win32Exception || e is InvalidOperationException) { Plugin.Log.LogWarning($"couldn't open File Explorer: {e.Message}"); }
             }
         }
+
+        // The game HUD, or its health bars and damage numbers, are on in the replay.
+        private static bool GameHudShown() => ReplayUI.CombatHud || (Hud.instance && !Hud.instance.m_userHidden);
+
+        // "   about 3 min 20 s left", once enough of the pass is done to judge its pace.
+        private static string Left(float since, float done, float after)
+        {
+            if (done < 0.02f) return "";
+            float left = (Time.realtimeSinceStartup - since) * (1f - done) / done + after;
+            return $"   about {Duration(left)} left";
+        }
+
+        private static string Duration(float seconds)
+        {
+            int s = Mathf.Max(0, Mathf.CeilToInt(seconds));
+            return s >= 60 ? $"{s / 60} min {s % 60:00} s" : $"{s} s";
+        }
+
+        // How long the real-time sound pass takes: the length of the video.
+        private static float SoundSeconds(float start, float end) =>
+            ReplaySession.PathSpeed ? CameraPath.OutputTime(end) - CameraPath.OutputTime(start) : (end - start) / Mathf.Max(ReplaySession.Speed, 0.01f);
 
         // Seek while paused and wait for objects to be built and posed before the first frame.
         private static IEnumerator SeekAndSettle(float t)

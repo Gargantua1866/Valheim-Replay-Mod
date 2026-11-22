@@ -994,7 +994,7 @@ namespace ReplayMod
             GUILayout.EndHorizontal();
             Ui.Label("Shift+click keys on the timeline, or drag along the row they sit in, to select them: they drag and delete together. Dragging snaps to markers (Alt: no snap).");
             if (Ui.Button(FreeCam.Take != null ? "Stop take (N)" : $"Record a take at {ReplaySession.Speed:0.##}x: fly by hand, saved as keys (N)")) ToggleTake();
-            Ui.Label("Whole path speed (up/down while following):");
+            Ui.Label("Whole path speed, times each key's speed (up/down while following):");
             GUILayout.BeginHorizontal();
             foreach (float s in Speeds)
             {
@@ -1103,6 +1103,7 @@ namespace ReplayMod
             bool many = _picked.Count > 1 && _picked.Contains(at);
             Ui.Label(many ? $"Replay speed while following, {_picked.Count} selected keys: {at.speed:0.##}x"
                 : $"Replay speed here while following: {at.speed:0.##}x");
+            if (CameraPath.Rate != 1f) Ui.Label($"With the whole path at {CameraPath.Rate:0.##}x, this plays at {at.speed * CameraPath.Rate:0.##}x.");
             GUILayout.BeginHorizontal();
             foreach (float sp in Speeds)
             {
@@ -1347,6 +1348,10 @@ namespace ReplayMod
                 ReplaySession.WindAngle = Slider("Direction (°)", ReplaySession.WindAngle, 0f, 360f, "0", 0f);
                 ReplaySession.WindStrength = Slider("Strength", ReplaySession.WindStrength, 0f, 1f, "0.00", 0.5f);
             }
+            ReplaySession.NoWindLines = Ui.Toggle(ReplaySession.NoWindLines, "Hide the wind lines and the dust in the air");
+            ReplaySession.DetailOverride = Ui.Toggle(ReplaySession.DetailOverride, "Set the level of detail (far objects)");
+            if (ReplaySession.DetailOverride)
+                ReplaySession.Detail = Mathf.Round(Slider("Level of detail", ReplaySession.Detail, 1f, 7f, "0", 5f));
             ReplaySession.FollowRecordedTime = Ui.Toggle(ReplaySession.FollowRecordedTime, "Time of day follows the recording");
             if (!ReplaySession.FollowRecordedTime)
             {
@@ -1411,7 +1416,15 @@ namespace ReplayMod
             Plugin.ExportAudio.Value = Ui.Toggle(Plugin.ExportAudio.Value, "Sound (plays the range again in real time afterwards)");
             Plugin.ExportOpen.Value = Ui.Toggle(Plugin.ExportOpen.Value, "Show the video in File Explorer when it's done");
             bool ff = Exporter.FindFfmpeg() != null;
-            Ui.Label(ff ? "Output: MP4 (FFmpeg found)" : Exporter.NeedFfmpeg);
+            GUILayout.BeginHorizontal();
+            Ui.Label("Codec:");
+            foreach (Plugin.Codec c in (Plugin.Codec[])System.Enum.GetValues(typeof(Plugin.Codec)))
+            {
+                string label = c == Plugin.Codec.Auto ? $"Auto ({Exporter.CodecName(Exporter.AutoCodec())})" : Exporter.CodecName(c);
+                if (Ui.Toggle(Plugin.ExportCodec.Value == c, label, GUI.skin.button)) Plugin.ExportCodec.Value = c;
+            }
+            GUILayout.EndHorizontal();
+            Ui.Label(ff ? $"Output: {(Plugin.ExportCodec.Value == Plugin.Codec.ProRes ? "MOV" : "MP4")} (FFmpeg found)" : Exporter.NeedFfmpeg);
             if (!ff && Ui.Button("Install FFmpeg (WinGet)")) Notify(Exporter.InstallFfmpeg());
             if (Exporter.RangeFor(Exporter.Range, out float es, out float ee))
             {

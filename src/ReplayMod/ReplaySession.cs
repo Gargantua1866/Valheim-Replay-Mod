@@ -30,6 +30,13 @@ namespace ReplayMod
         public static string WeatherOverride = "";
         public static bool WindOverride;
         public static float WindAngle, WindStrength = 0.5f;
+        // The game's wind lines and the dust drifting with them, which follow the camera.
+        public static bool NoWindLines;
+        private static GameObject _windLines;
+        // Overrides the game's level of detail (QualitySettings.lodBias; the game's own setting goes 1 to 5).
+        public static bool DetailOverride;
+        public static float Detail = 5f;
+        private static float _lodWas = -1f;
         public static bool HidePlayers, HideHeld, HideProjectiles;
         private static (bool, bool, bool) _hideApplied;
         private static bool _thumbPending;
@@ -141,7 +148,9 @@ namespace ReplayMod
             _catapults.Clear();
             _basket.Clear();
             Hidden.Clear();
-            HidePlayers = HideHeld = HideProjectiles = WindOverride = false;
+            HidePlayers = HideHeld = HideProjectiles = WindOverride = NoWindLines = DetailOverride = false;
+            if (_lodWas >= 0f) QualitySettings.lodBias = _lodWas;
+            _lodWas = -1f;
             _hideApplied = default;
             FreeCam.Reset();
             _poseBones.Clear();
@@ -946,6 +955,19 @@ namespace ReplayMod
             if (WindOverride) env.SetDebugWind(WindAngle, WindStrength);
             else if (Data.Winds.Count > 0) ApplyRecordedWind(env);
             else env.ResetDebugWind();
+            // Found in the main scene by path; looked for at most once a second while it's wanted off.
+            if (NoWindLines && !_windLines && Time.frameCount % 60 == 0) _windLines = GameObject.Find("_Environment/FollowPlayer/GlobalWindParticles");
+            if (_windLines && _windLines.activeSelf == NoWindLines) _windLines.SetActive(!NoWindLines);
+            if (DetailOverride)
+            {
+                if (_lodWas < 0f) _lodWas = QualitySettings.lodBias;
+                QualitySettings.lodBias = Detail;
+            }
+            else if (_lodWas >= 0f)
+            {
+                QualitySettings.lodBias = _lodWas;
+                _lodWas = -1f;
+            }
         }
 
         private static readonly AccessTools.FieldRef<EnvMan, Vector4> WindFrom = AccessTools.FieldRefAccess<EnvMan, Vector4>("m_windDir1");

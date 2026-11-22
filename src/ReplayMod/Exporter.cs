@@ -358,7 +358,7 @@ namespace ReplayMod
                     if (proc == null)
                     {
                         proc = StartFfmpeg(ffmpeg, $"-y -f rawvideo -pix_fmt {PixFmt(tex.format)} -s {tex.width}x{tex.height} -r {fps} -i - " +
-                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 {EncoderArgs(codec)} \"{videoOnly}\"", stdin: true);
+                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 {EncoderArgs(codec, Mbps(codec, tex.width, tex.height, fps))} \"{videoOnly}\"", stdin: true);
                         pipe = proc.StandardInput.BaseStream;
                     }
                     byte[] raw = tex.GetRawTextureData();
@@ -489,20 +489,46 @@ namespace ReplayMod
 
         // What the menu's Auto means for the current size and frame rate.
         public static Plugin.Codec AutoCodec() =>
-            FitsH264(Screen.width * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4), Screen.height * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4), Plugin.ExportFps.Value) ? Plugin.Codec.H264 : Plugin.Codec.H265;
+            FitsH264(MenuWidth, MenuHeight, Plugin.ExportFps.Value) ? Plugin.Codec.H264 : Plugin.Codec.H265;
 
-        private static string EncoderArgs(Plugin.Codec c) => c switch
+        private static int MenuWidth => Screen.width * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4);
+        private static int MenuHeight => Screen.height * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4);
+
+        // A clean master's bitrate at 1080p 60 fps, growing slower than the pixels per second because
+        // larger frames compress better.
+        public static float UsualMbps(Plugin.Codec c, int w, int h, int fps)
         {
-            // hvc1 so Apple players and editors take it too
-            Plugin.Codec.H265 => "-c:v libx265 -preset medium -crf 18 -tag:v hvc1 -x265-params log-level=error -pix_fmt yuv420p",
-            Plugin.Codec.AV1 => "-c:v libsvtav1 -preset 8 -crf 26 -pix_fmt yuv420p",
-            Plugin.Codec.ProRes => "-c:v prores_ks -profile:v 3 -pix_fmt yuv422p10le",
-            _ => "-c:v libx264 -preset medium -crf 16 -pix_fmt yuv420p",
-        };
+            float at1080p60 = c == Plugin.Codec.H265 ? 28f : c == Plugin.Codec.AV1 ? 20f : 40f;
+            return Mathf.Max(1f, Mathf.Round(at1080p60 * Mathf.Pow((float)w * h * fps / (1920f * 1080f * 60f), 0.75f)));
+        }
+
+        private static float Mbps(Plugin.Codec c, int w, int h, int fps) => Plugin.ExportBitrate.Value > 0f ? Plugin.ExportBitrate.Value : UsualMbps(c, w, h, fps);
+
+        // The bitrate box: the typed one, or the usual for the chosen codec, size and frame rate.
+        public static float MenuMbps()
+        {
+            int fps = Plugin.ExportFps.Value;
+            return Mbps(Pick(MenuWidth, MenuHeight, fps), MenuWidth, MenuHeight, fps);
+        }
+
+        private static string EncoderArgs(Plugin.Codec c, float mbps)
+        {
+            int k = Mathf.RoundToInt(mbps * 1000f);
+            string rate = $"-b:v {k}k -maxrate {k * 3 / 2}k -bufsize {k * 2}k";
+            return c switch
+            {
+                // hvc1 so Apple players and editors take it too
+                Plugin.Codec.H265 => $"-c:v libx265 -preset medium {rate} -tag:v hvc1 -x265-params log-level=error -pix_fmt yuv420p",
+                Plugin.Codec.AV1 => $"-c:v libsvtav1 -preset 8 -b:v {k}k -pix_fmt yuv420p",
+                Plugin.Codec.ProRes => "-c:v prores_ks -profile:v 3 -pix_fmt yuv422p10le",
+                _ => $"-c:v libx264 -preset medium {rate} -pix_fmt yuv420p",
+            };
+        }
 
         public static void SelfCheck()
         {
-            if (!FitsH264(3840, 2160, 60) || !FitsH264(1920, 1080, 144) || FitsH264(5760, 3240, 30) || FitsH264(3840, 2160, 120))
+            if (!FitsH264(3840, 2160, 60) || !FitsH264(1920, 1080, 144) || FitsH264(5760, 3240, 30) || FitsH264(3840, 2160, 120)
+                || UsualMbps(Plugin.Codec.H264, 1920, 1080, 60) != 40f || UsualMbps(Plugin.Codec.H265, 3840, 2160, 60) != 79f)
                 Plugin.Log.LogError("export codec self-check FAILED");
         }
 

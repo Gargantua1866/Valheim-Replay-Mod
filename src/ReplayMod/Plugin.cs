@@ -21,6 +21,7 @@ namespace ReplayMod
         internal static ConfigEntry<bool> ExportOpen;
         internal enum Codec { Auto, H264, H265, AV1, ProRes }
         internal static ConfigEntry<Codec> ExportCodec;
+        internal static ConfigEntry<float> ExportBitrate;
 
         internal static ConfigEntry<KeyboardShortcut> RecordKey, MarkKey;
         internal static ConfigEntry<float> SampleRate;
@@ -83,6 +84,7 @@ namespace ReplayMod
             ExportFps = Config.Bind("Export", "FrameRate", 60, new ConfigDescription("Video frame rate.", new AcceptableValueList<int>(24, 30, 60, 120, 144)));
             ExportScale = Config.Bind("Export", "ResolutionScale", 1, new ConfigDescription("Video size as a multiple of the game window (2 = supersampled).", new AcceptableValueRange<int>(1, 4)));
             ExportCodec = Config.Bind("Export", "Codec", Codec.Auto, "Video codec, from FFmpeg. Auto = H.264, or H.265 when the video is too large or fast for H.264 players (above 4K at 60 fps). ProRes is for video editors and makes very large .mov files.");
+            ExportBitrate = Config.Bind("Export", "BitrateMbps", 0f, "Video bitrate in Mbps. 0 = the usual for the codec, size and frame rate. ProRes sets its own.");
             ExportAudio = Config.Bind("Export", "Audio", true, "After the video, play the range again in real time to record its sound and merge it into the MP4.");
             FfmpegPath = Config.Bind("Export", "FfmpegPath", "", "ffmpeg.exe, which export needs. Empty = look in WinGet's folder and on PATH.");
             ScreenshotScale = Config.Bind("Export", "ScreenshotScale", 1, new ConfigDescription("Screenshot size as a multiple of the game window.", new AcceptableValueRange<int>(1, 4)));

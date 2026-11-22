@@ -99,7 +99,7 @@ To make a path, fly to a pose, move the timeline and press K. Repeat for each po
 [*][b]Exact values:[/b] the Tab menu has fields for the key's time, FOV and roll. Enter applies.
 [*][b]Re-posing:[/b] pressing K at a key's time replaces that key's pose.
 [*][b]Easing:[/b] each move from one key to the next can be Smooth, Ease in/out (stops at both keys), Ease in, Ease out, Linear or Hold. Set it in the Tab menu.
-[*][b]Speed track:[/b] each camera key has a replay speed (Tab menu, under the key's ease). While following the path, the replay speeds up and slows down between keys and the camera keeps its pace, so a slow-motion stretch doesn't slow the camera move.
+[*][b]Speed track:[/b] each camera key has a replay speed (Tab menu, under the key's ease). While following the path, the replay speeds up and slows down between keys and the camera keeps its pace, so a slow-motion stretch doesn't slow the camera move. With several keys selected, the speed buttons set all of them.
 [*][b]Time of day and weather:[/b] a key can set either. Time blends to the next key that sets it, the short way around the clock. Weather changes at the key and stays. Both apply whether or not you follow the path, and they override the Time and weather section.
 [*][b]In the world:[/b] each key shows as a small numbered wireframe camera pointing where it looks. Its notch marks the top, so you can see roll. Keys and the path are drawn after depth of field and other effects, so they stay sharp, and they show through terrain.
 [*][b]Path colors:[/b] the path line runs from green (slowest) to red (fastest camera). The Tab menu shows the top speed in m/s.
@@ -130,7 +130,7 @@ Recordings mark deaths, kills, bosses (seen and defeated), teleports and your ow
 [b]Screenshots:[/b] F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. "Keep it lit" helps line it up.
 
 [size=5][b]Export[/b][/size]
-F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. Files go to [b]...\ReplayMod\exports[/b].
+F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress; it isn't in the video. At 2x or more, the game's motion blur and antialiasing are off for the export. Files go to [b]...\ReplayMod\exports[/b].
 
 Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an [b]Install FFmpeg[/b] button (WinGet), or you can set [b]FfmpegPath[/b] in the config.
 

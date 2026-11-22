@@ -4,6 +4,9 @@
 
 - The camera can follow, mount on or orbit missiles that mods fly on each machine without a network identity. It lets go when the missile explodes. `LocalTargets` in the config sets which kinds count.
 - Exports wait for FarLands to finish drawing its distant land, so it shows in the video as it does while watching.
+- With several camera keys selected, the replay speed buttons in the Tab menu set all of them at once.
+- Exports at 2x or more turn off the game's motion blur and antialiasing for the export, which blurred some 4K and 6K videos. Supersampling smooths the edges anyway.
+- A small box in the corner shows the export's progress, and that F10 cancels. It isn't in the video.
 - A camera path between two keys close together no longer swings out in a long loop when the keys around them are far away.
 
 ## 0.1.3

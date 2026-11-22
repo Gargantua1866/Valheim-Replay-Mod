@@ -9,6 +9,11 @@
 - A small box in the corner shows the export's progress, the time left and that F10 cancels. It isn't in the video.
 - Clicking a camera key to select it no longer nudges it: a key moves only after a short drag, and keeps the spot where it was grabbed.
 - Dragging along the row the keys sit in selects every key in that stretch. Shift adds them to the selection.
+- The Export section picks the video codec: H.264, H.265, AV1 or ProRes (a .mov for video editors), all from the FFmpeg export already uses. Auto, the default, uses H.264, or H.265 for videos larger or faster than H.264 players handle. 6K videos, and 4K above 60 fps, came out as H.264 that Windows and most players showed as corrupted.
+- Screenshots at 2x or more render the camera straight at that size, so FarLands' distant objects are in them.
+- *Hide the wind lines and the dust in the air* in Time and weather turns off the game's wind streaks and drifting specks.
+- *Set the level of detail* overrides the game's level of detail from 1 to 7 during the replay, so far objects keep their full models further away. The game's own setting goes up to 5.
+- The camera path's speed labels say that the whole path speed multiplies each key's speed, and what a key plays at.
 - A camera path between two keys close together no longer swings out in a long loop when the keys around them are far away.
 
 ## 0.1.3

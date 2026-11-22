@@ -103,7 +103,7 @@ To make a path, fly to a pose, move the timeline and press K. Repeat for each po
 [*][b]Time of day and weather:[/b] a key can set either. Time blends to the next key that sets it, the short way around the clock. Weather changes at the key and stays. Both apply whether or not you follow the path, and they override the Time and weather section.
 [*][b]In the world:[/b] each key shows as a small numbered wireframe camera pointing where it looks. Its notch marks the top, so you can see roll. Keys and the path are drawn after depth of field and other effects, so they stay sharp, and they show through terrain.
 [*][b]Path colors:[/b] the path line runs from green (slowest) to red (fastest camera). The Tab menu shows the top speed in m/s.
-[*][b]Takes in slow motion:[/b] slow the replay down, press N and fly. You get more time to steer and just as much detail. The take keeps the speed you flew it at, and the whole path speed (Up/Down arrows while following, or the Tab menu) plays it at any other speed.
+[*][b]Takes in slow motion:[/b] slow the replay down, press N and fly. You get more time to steer and just as much detail. The take keeps the speed you flew it at, and the whole path speed (Up/Down arrows while following, or the Tab menu) plays it at any other speed. The whole path speed multiplies each key's speed: keys at 0.5x with the whole path at 2x play at 1x.
 [*][b]Moving with an object:[/b] "Path moves with target" in the Tab menu ties the path to the object the camera is attached to, or to the one at the screen center. The keys then ride along with it. "Moves and turns with it" turns them with it too, for a camera path around a moving ship.
 [*][b]Saving:[/b] Replay Mod saves keys and bookmarks automatically next to the replay as <name>.camera.txt.
 [/list]
@@ -114,7 +114,7 @@ Type in the search box at the top to show only the sections that have what you'r
 [*][b]Framing and focus:[/b] has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
 [*][b]Picture:[/b] changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts.
 [*][b]Camera presets:[/b] eight slots that keep all of the settings above. Click a preset's name to rename it.
-[*][b]Time and weather:[/b] wind follows the recording unless "Set the wind" is on, which sets its direction and strength.
+[*][b]Time and weather:[/b] wind follows the recording unless "Set the wind" is on, which sets its direction and strength. "Hide the wind lines and the dust in the air" turns off those effects. "Set the level of detail" overrides the game's level of detail from 1 to 7 (the game's own setting goes up to 5), so far objects keep their full models further away.
 [*][b]Hide from the shot:[/b] hides the aimed object (U), all players, what players hold, and projectiles. Projectiles that a mod draws its own way may not count.
 [*][b]Players:[/b] lists the recorded players. "Go to" puts the camera behind one, "Follow" follows them, and "Eyes" shows their view.
 [*][b]HUD:[/b] shows health bars and damage numbers without the rest of the HUD, or turns on the normal game HUD (same as Ctrl+F3).
@@ -127,12 +127,12 @@ Recordings mark deaths, kills, bosses (seen and defeated), teleports and your ow
 
 [b]Targets:[/b] you can follow, mount, orbit or look at arrows, bolts, spears, bombs, spells, meteors and catapult shots by aiming near them and pressing the associated key. Missiles that mods fly on each machine without a network identity work too: follow, mount on or orbit one, and the camera lets go where it explodes. [b]LocalTargets[/b] in the config lists which kinds count (by component name; Missile by default).
 [b]Trim:[/b] in the Tab menu, select a section (or mark a start and an end) and save that part as a new, shorter replay. Camera keys in it are included.
-[b]Screenshots:[/b] F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. "Keep it lit" helps line it up.
+[b]Screenshots:[/b] F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. "Keep it lit" helps line it up. At 2x or more the camera renders straight at that size, as in exports, unless the game HUD is on.
 
 [size=5][b]Export[/b][/size]
 F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress and the time left; it isn't in the video. At 2x or more the camera renders straight at the video size. With the game HUD on, Unity's larger capture is used instead, with the game's motion blur and antialiasing off for the export. Files go to [b]...\ReplayMod\exports[/b].
 
-Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an [b]Install FFmpeg[/b] button (WinGet), or you can set [b]FfmpegPath[/b] in the config.
+Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an [b]Install FFmpeg[/b] button (WinGet), or you can set [b]FfmpegPath[/b] in the config.
 
 [size=5][b]Configuration[/b][/size]
 Settings are in [b]BepInEx\config\com.gargantua.replaymod.cfg[/b], or in the F1 menu if you have a configuration manager mod installed. The sections are:

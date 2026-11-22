@@ -100,7 +100,7 @@ To make a path, fly to a pose, move the timeline and press K. Repeat for each po
 - **Time of day and weather:** a key can set either. Time blends to the next key that sets it, the short way around the clock. Weather changes at the key and stays. Both apply whether or not you follow the path, and they override the Time and weather section.
 - **In the world:** each key shows as a small numbered wireframe camera pointing where it looks. Its notch marks the top, so you can see roll. Keys and the path are drawn after depth of field and other effects, so they stay sharp, and they show through terrain.
 - **Path colors:** the path line runs from green (slowest) to red (fastest camera). The Tab menu shows the top speed in m/s.
-- **Takes in slow motion:** slow the replay down, press N and fly. You get more time to steer and just as much detail. The take keeps the speed you flew it at, and the whole path speed (↑/↓ while following, or the Tab menu) plays it at any other speed.
+- **Takes in slow motion:** slow the replay down, press N and fly. You get more time to steer and just as much detail. The take keeps the speed you flew it at, and the whole path speed (↑/↓ while following, or the Tab menu) plays it at any other speed. The whole path speed multiplies each key's speed: keys at 0.5x with the whole path at 2x play at 1x.
 - **Moving with an object:** *Path moves with target* in the Tab menu ties the path to the object the camera is attached to, or to the one at the screen center. The keys then ride along with it. *Moves and turns with it* turns them with it too, for a camera path around a moving ship.
 - **Saving:** Replay Mod saves keys and bookmarks automatically next to the replay as `<name>.camera.txt`.
 
@@ -111,7 +111,7 @@ Type in the search box at the top to show only the sections that have what you'r
 - **Framing and focus:** has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
 - **Picture:** changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts.
 - **Camera presets:** eight slots that keep all of the settings above. Click a preset's name to rename it.
-- **Time and weather:** wind follows the recording unless *Set the wind* is on, which sets its direction and strength.
+- **Time and weather:** wind follows the recording unless *Set the wind* is on, which sets its direction and strength. *Hide the wind lines and the dust in the air* turns off those effects. *Set the level of detail* overrides the game's level of detail from 1 to 7 (the game's own setting goes up to 5), so far objects keep their full models further away.
 - **Hide from the shot:** hides the aimed object (U), all players, what players hold, and projectiles. Projectiles that a mod draws its own way may not count.
 - **Players:** lists the recorded players. *Go to* puts the camera behind one, *Follow* follows them, and *Eyes* shows their view.
 - **HUD:** shows health bars and damage numbers without the rest of the HUD, or turns on the normal game HUD (same as Ctrl+F3).
@@ -132,13 +132,13 @@ In the Tab menu, select a section (or mark a start and an end) and save that par
 
 ### Screenshots
 
-F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. *Keep it lit* helps line it up.
+F9 takes a screenshot. The Export section has brightness, exposure and a camera flash, a light on the camera for the moment of the shot. *Keep it lit* helps line it up. At 2x or more the camera renders straight at that size, as in exports, unless the game HUD is on.
 
 ### Export
 
 F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress and the time left; it isn't in the video. At 2x or more the camera renders straight at the video size. With the game HUD on, Unity's larger capture is used instead, with the game's motion blur and antialiasing off for the export. Files go to `...\ReplayMod\exports`.
 
-Export needs FFmpeg and writes an MP4. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
+Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
 
 ## Configuration
 

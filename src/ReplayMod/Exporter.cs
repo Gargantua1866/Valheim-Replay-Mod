@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
 using UnityEngine;
+using UnityEngine.PostProcessing;
 
 namespace ReplayMod
 {
@@ -241,6 +242,15 @@ namespace ReplayMod
             Stream pipe = null;
             int frames = 0;
             string error = null;
+            // A capture above 1x is a second render of the frame at the larger size, and effects that blend in
+            // earlier frames (motion blur, the antialiasing) smeared it. Supersampling smooths the edges anyway.
+            PostProcessingProfile post = scale > 1 ? Camera.main?.GetComponent<PostProcessingBehaviour>()?.profile : null;
+            bool blurWas = post && post.motionBlur.enabled, aaWas = post && post.antialiasing.enabled;
+            if (post)
+            {
+                post.motionBlur.enabled = false;
+                post.antialiasing.enabled = false;
+            }
             // Video pass.
             yield return SeekAndSettle(start);
             AudioListener.volume = 0f; // sound comes from the real-time pass
@@ -253,7 +263,8 @@ namespace ReplayMod
                 {
                     // Time holds while the destination of a far jump loads; those frames aren't the video.
                     Status = "Exporting video: loading";
-                    yield return null;
+                    yield return new WaitForEndOfFrame();
+                    ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
                     continue;
                 }
                 if (FarLandsCompat.Building)
@@ -263,7 +274,8 @@ namespace ReplayMod
                     {
                         Holding = true;
                         Status = "Exporting video: waiting for FarLands' distant land";
-                        yield return null;
+                        yield return new WaitForEndOfFrame();
+                        ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
                         continue;
                     }
                 }
@@ -289,6 +301,7 @@ namespace ReplayMod
                 }
                 UnityEngine.Object.Destroy(tex);
                 Status = $"Exporting video: {Mathf.InverseLerp(start, end, ReplaySession.T) * 100f:0}% ({frames} frames)";
+                ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
                 if (Time.unscaledTime >= nextLog)
                 {
                     nextLog = Time.unscaledTime + 5f;
@@ -296,6 +309,11 @@ namespace ReplayMod
                 }
             }
             Time.captureFramerate = 0;
+            if (post)
+            {
+                post.motionBlur.enabled = blurWas;
+                post.antialiasing.enabled = aaWas;
+            }
             Holding = false;
             _waitSince = -1f;
             AudioListener.volume = volume;
@@ -320,7 +338,8 @@ namespace ReplayMod
                     while (!_cancel && ReplaySession.Active && ReplaySession.T < end - 1e-4f)
                     {
                         Status = $"Recording sound (real time): {Mathf.InverseLerp(start, end, ReplaySession.T) * 100f:0}%";
-                        yield return null;
+                        yield return new WaitForEndOfFrame();
+                        ExportOverlay.Draw(Status, Mathf.InverseLerp(start, end, ReplaySession.T));
                     }
                     ReplaySession.Paused = true;
                     RecordingSound = false;

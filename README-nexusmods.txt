@@ -149,6 +149,7 @@ Settings are in [b]BepInEx\config\com.gargantua.replaymod.cfg[/b], or in the F1 
 [*]Replay Mod replays other mods' RPCs aimed at recorded objects, such as weapon fire and effects. If a mod misbehaves in replays, turn off [b]ReplayModRpcs[/b].
 [*][b]RecordPose[/b] records your character's final bone pose, so animation mods replay as you saw them.
 [*][b]Terrain generation mods such as Riverheim must be installed to watch a replay recorded with them.[/b] Replay Mod rebuilds the world from its seed, so without the mod the replay shows vanilla terrain. Mods built on Worldhalla (Riverheim is one) are supported. Recordings made before 0.1.3 take the generator from your saved world of the same name and seed, if you have it.
+[*]FarLands: its distant land shows in exports too. Export holds the replay while FarLands is still building it, for up to 20 seconds at a time. WeatherOverhaul follows the recorded weather and clock, so its clouds and moon match recordings made with 0.1.1 or later.
 [*]Mods that make teleporting faster, and the game's debug mode, can make replays unstable while you watch them. Normal play isn't affected.
 [/list]
 

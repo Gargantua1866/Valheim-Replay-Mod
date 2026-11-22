@@ -3,6 +3,8 @@
 ## 0.1.4
 
 - The camera can follow, mount on or orbit missiles that mods fly on each machine without a network identity. It lets go when the missile explodes. `LocalTargets` in the config sets which kinds count.
+- Exports wait for FarLands to finish drawing its distant land, so it shows in the video as it does while watching.
+- A camera path between two keys close together no longer swings out in a long loop when the keys around them are far away.
 
 ## 0.1.3
 

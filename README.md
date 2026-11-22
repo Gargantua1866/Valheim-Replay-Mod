@@ -108,8 +108,7 @@ To make a path, fly to a pose, move the timeline and press K. Repeat for each po
 
 Type in the search box at the top to show only the sections that have what you're after, with the words you typed highlighted. Enter, Tab or a click leaves the box. Right-click a slider to put it back to its default. Drag the menu's bottom-right corner to resize it.
 
-- **Framing and focus:** has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
-- **Picture:** changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts.
+- **Picture:** changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts, and has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
 - **Camera presets:** eight slots that keep all of the settings above. Click a preset's name to rename it.
 - **Time and weather:** wind follows the recording unless *Set the wind* is on, which sets its direction and strength. *Hide the wind lines and the dust in the air* turns off those effects. *Set the level of detail* overrides the game's level of detail from 1 to 7 (the game's own setting goes up to 5), so far objects keep their full models further away.
 - **Hide from the shot:** hides the aimed object (U), all players, what players hold, and projectiles. Projectiles that a mod draws its own way may not count.
@@ -138,7 +137,7 @@ F9 takes a screenshot. The Export section has brightness, exposure and a camera 
 
 F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress and the time left; it isn't in the video. At 2x or more the camera renders straight at the video size. With the game HUD on, Unity's larger capture is used instead, with the game's motion blur and antialiasing off for the export. Files go to `...\ReplayMod\exports`.
 
-Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
+Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Below it, the bitrate box shows the usual bitrate for the codec, size and frame rate; type another and press Enter. Choosing a codec puts it back to that codec's usual. Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an **Install FFmpeg** button (WinGet), or you can set `FfmpegPath` in the config.
 
 ## Configuration
 

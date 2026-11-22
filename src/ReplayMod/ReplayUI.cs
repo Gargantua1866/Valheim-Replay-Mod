@@ -831,8 +831,8 @@ namespace ReplayMod
             if (Fold("Camera path", "key keys keyframe add delete copy paste undo redo clear previous next take record follow show line colour color ease speed time of day weather match original fov roll select move attach anchor rides")) PathSection();
             if (Fold("Camera target", "follow mount orbit detach look at aim attach softness lag projectile arrow bolt spear bomb spell meteor")) TargetSection();
             if (Fold("Camera controls", "original fov zoom roll pan move speed smoothing aim sensitivity yaw pitch invert lock height axis")) ControlsSection();
-            if (Fold("Framing and focus", "guide grid thirds golden center safe wide vertical horizon depth of field dof focus blur aperture")) FramingSection();
-            if (Fold("Picture", "exposure brightness temperature colour color saturation contrast bloom lens dirt sun shafts look grading revert")) PictureSection();
+            if (Fold("Framing", "guide grid thirds golden center safe wide vertical horizon")) FramingSection();
+            if (Fold("Picture", "exposure brightness temperature colour color saturation contrast bloom lens dirt sun shafts look grading revert depth of field dof focus blur aperture")) PictureSection();
             if (Fold("Camera presets", "preset save load")) PresetsSection();
             if (Fold("Players", "player go to follow eyes first person pov")) PlayersSection();
             if (Fold("Hide from the shot", "hide hidden show object players held items weapons projectiles arrows")) HideSection();
@@ -1195,6 +1195,12 @@ namespace ReplayMod
             Picture.LensDirt = Ui.Toggle(Picture.LensDirt, "Lens dirt in the bloom");
             Picture.Shafts = Slider("Sun shafts", Picture.Shafts, 0f, 3f, "0.00", 1f);
             if (Ui.Button("Revert all")) Picture.ResetValues();
+            FreeCam.DofOn = Ui.Toggle(FreeCam.DofOn, "Depth of field");
+            if (!FreeCam.DofOn) return;
+            FreeCam.DofAuto = Ui.Toggle(FreeCam.DofAuto, "Auto focus (look-at target, or the screen center)");
+            if (FreeCam.DofAuto) Ui.Label($"Focus: {FreeCam.DofDistance:0.0} m");
+            else FreeCam.DofDistance = Slider("Focus (m)", FreeCam.DofDistance, 0.5f, 200f, "0.0", 10f);
+            FreeCam.DofAperture = Slider("Blur", FreeCam.DofAperture, 0.05f, FreeCam.DofMaxAperture, "0.00", 0.5f);
         }
 
         // Part of the replay to save as its own shorter replay.
@@ -1282,12 +1288,6 @@ namespace ReplayMod
             }
             GUILayout.EndHorizontal();
             GuideHidden = Ui.Toggle(GuideHidden, "Hide the guide (hold G)");
-            FreeCam.DofOn = Ui.Toggle(FreeCam.DofOn, "Depth of field");
-            if (!FreeCam.DofOn) return;
-            FreeCam.DofAuto = Ui.Toggle(FreeCam.DofAuto, "Auto focus (look-at target, or the screen center)");
-            if (FreeCam.DofAuto) Ui.Label($"Focus: {FreeCam.DofDistance:0.0} m");
-            else FreeCam.DofDistance = Slider("Focus (m)", FreeCam.DofDistance, 0.5f, 200f, "0.0", 10f);
-            FreeCam.DofAperture = Slider("Blur", FreeCam.DofAperture, 0.05f, FreeCam.DofMaxAperture, "0.00", 0.5f);
         }
 
         private static void PresetsSection()
@@ -1413,17 +1413,30 @@ namespace ReplayMod
                 if (Ui.Toggle(Plugin.ExportScale.Value == k, $"{k}x ({Screen.width * k}x{Screen.height * k})", GUI.skin.button)) Plugin.ExportScale.Value = k;
             }
             GUILayout.EndHorizontal();
-            Plugin.ExportAudio.Value = Ui.Toggle(Plugin.ExportAudio.Value, "Sound (plays the range again in real time afterwards)");
-            Plugin.ExportOpen.Value = Ui.Toggle(Plugin.ExportOpen.Value, "Show the video in File Explorer when it's done");
-            bool ff = Exporter.FindFfmpeg() != null;
             GUILayout.BeginHorizontal();
             Ui.Label("Codec:");
             foreach (Plugin.Codec c in (Plugin.Codec[])System.Enum.GetValues(typeof(Plugin.Codec)))
             {
                 string label = c == Plugin.Codec.Auto ? $"Auto ({Exporter.CodecName(Exporter.AutoCodec())})" : Exporter.CodecName(c);
-                if (Ui.Toggle(Plugin.ExportCodec.Value == c, label, GUI.skin.button)) Plugin.ExportCodec.Value = c;
+                // Choosing a codec puts the bitrate back to that codec's usual.
+                if (Ui.Toggle(Plugin.ExportCodec.Value == c, label, GUI.skin.button) && Plugin.ExportCodec.Value != c)
+                {
+                    Plugin.ExportCodec.Value = c;
+                    Plugin.ExportBitrate.Value = 0f;
+                }
             }
             GUILayout.EndHorizontal();
+            if (Plugin.ExportCodec.Value == Plugin.Codec.ProRes) Ui.Label("Bitrate: set by ProRes 422 HQ");
+            else
+            {
+                GUILayout.BeginHorizontal();
+                NumberField("Bitrate (Mbps):", Exporter.MenuMbps(), v => Plugin.ExportBitrate.Value = Mathf.Clamp(v, 1f, 2000f));
+                Ui.Label(Plugin.ExportBitrate.Value > 0f ? "typed, Enter applies" : "usual for this codec and size, Enter applies");
+                GUILayout.EndHorizontal();
+            }
+            Plugin.ExportAudio.Value = Ui.Toggle(Plugin.ExportAudio.Value, "Sound (plays the range again in real time afterwards)");
+            Plugin.ExportOpen.Value = Ui.Toggle(Plugin.ExportOpen.Value, "Show the video in File Explorer when it's done");
+            bool ff = Exporter.FindFfmpeg() != null;
             Ui.Label(ff ? $"Output: {(Plugin.ExportCodec.Value == Plugin.Codec.ProRes ? "MOV" : "MP4")} (FFmpeg found)" : Exporter.NeedFfmpeg);
             if (!ff && Ui.Button("Install FFmpeg (WinGet)")) Notify(Exporter.InstallFfmpeg());
             if (Exporter.RangeFor(Exporter.Range, out float es, out float ee))

@@ -276,7 +276,7 @@ namespace ReplayMod
             string videoOnly = Path.Combine(Plugin.ExportDir, name + (Plugin.ExportAudio.Value ? "_video" : "") + ext);
             string wav = Path.Combine(Plugin.ExportDir, name + ".wav");
             string final = Path.Combine(Plugin.ExportDir, name + ext);
-            Plugin.Log.LogInfo($"export {start:0.00}-{end:0.00} s at {fps} fps x{scale} as {codec} to {videoOnly}");
+            Plugin.Log.LogInfo($"export {start:0.00}-{end:0.00} s at {fps} fps x{scale} as {codec} at {Kbps(codec, Screen.width * scale, Screen.height * scale, fps)} Kbps to {videoOnly}");
 
             float volume = AudioListener.volume;
             Process proc = null;
@@ -358,7 +358,7 @@ namespace ReplayMod
                     if (proc == null)
                     {
                         proc = StartFfmpeg(ffmpeg, $"-y -f rawvideo -pix_fmt {PixFmt(tex.format)} -s {tex.width}x{tex.height} -r {fps} -i - " +
-                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 {EncoderArgs(codec, Mbps(codec, tex.width, tex.height, fps))} \"{videoOnly}\"", stdin: true);
+                            $"-vf vflip,crop=trunc(iw/2)*2:trunc(ih/2)*2 {EncoderArgs(codec, Kbps(codec, tex.width, tex.height, fps))} \"{videoOnly}\"", stdin: true);
                         pipe = proc.StandardInput.BaseStream;
                     }
                     byte[] raw = tex.GetRawTextureData();
@@ -495,25 +495,24 @@ namespace ReplayMod
         private static int MenuHeight => Screen.height * Mathf.Clamp(Plugin.ExportScale.Value, 1, 4);
 
         // A clean master's bitrate at 1080p 60 fps, growing slower than the pixels per second because
-        // larger frames compress better.
-        public static float UsualMbps(Plugin.Codec c, int w, int h, int fps)
+        // larger frames compress better. Whole Mbps.
+        public static int UsualKbps(Plugin.Codec c, int w, int h, int fps)
         {
             float at1080p60 = c == Plugin.Codec.H265 ? 28f : c == Plugin.Codec.AV1 ? 20f : 40f;
-            return Mathf.Max(1f, Mathf.Round(at1080p60 * Mathf.Pow((float)w * h * fps / (1920f * 1080f * 60f), 0.75f)));
+            return 1000 * Mathf.Max(1, Mathf.RoundToInt(at1080p60 * Mathf.Pow((float)w * h * fps / (1920f * 1080f * 60f), 0.75f)));
         }
 
-        private static float Mbps(Plugin.Codec c, int w, int h, int fps) => Plugin.ExportBitrate.Value > 0f ? Plugin.ExportBitrate.Value : UsualMbps(c, w, h, fps);
+        private static int Kbps(Plugin.Codec c, int w, int h, int fps) => Plugin.ExportBitrate.Value > 0 ? Plugin.ExportBitrate.Value : UsualKbps(c, w, h, fps);
 
         // The bitrate box: the typed one, or the usual for the chosen codec, size and frame rate.
-        public static float MenuMbps()
+        public static int MenuKbps()
         {
             int fps = Plugin.ExportFps.Value;
-            return Mbps(Pick(MenuWidth, MenuHeight, fps), MenuWidth, MenuHeight, fps);
+            return Kbps(Pick(MenuWidth, MenuHeight, fps), MenuWidth, MenuHeight, fps);
         }
 
-        private static string EncoderArgs(Plugin.Codec c, float mbps)
+        private static string EncoderArgs(Plugin.Codec c, int k)
         {
-            int k = Mathf.RoundToInt(mbps * 1000f);
             string rate = $"-b:v {k}k -maxrate {k * 3 / 2}k -bufsize {k * 2}k";
             return c switch
             {
@@ -528,7 +527,7 @@ namespace ReplayMod
         public static void SelfCheck()
         {
             if (!FitsH264(3840, 2160, 60) || !FitsH264(1920, 1080, 144) || FitsH264(5760, 3240, 30) || FitsH264(3840, 2160, 120)
-                || UsualMbps(Plugin.Codec.H264, 1920, 1080, 60) != 40f || UsualMbps(Plugin.Codec.H265, 3840, 2160, 60) != 79f)
+                || UsualKbps(Plugin.Codec.H264, 1920, 1080, 60) != 40000 || UsualKbps(Plugin.Codec.H265, 3840, 2160, 60) != 79000)
                 Plugin.Log.LogError("export codec self-check FAILED");
         }
 

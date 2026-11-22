@@ -33,14 +33,11 @@ namespace ReplayMod
         // The game's wind lines and the dust drifting with them, which follow the camera.
         public static bool NoWindLines;
         private static GameObject _windLines;
-        // Overrides the game's level of detail (QualitySettings.lodBias; the game's own setting goes 1 to 5).
-        public static bool DetailOverride;
-        public static float Detail = 5f;
-        private static float _lodWas = -1f;
         public static bool HidePlayers, HideHeld, HideProjectiles;
         private static (bool, bool, bool) _hideApplied;
         private static bool _thumbPending;
-        private static float _envShownTime = -1f;
+        private static float _envShownTime = -1f, _envStepNext;
+        private static Vector3 _envShownAt;
         private static string _envShownName;
         public static string LastError = "";
         public static int RpcsApplied, RpcErrors;
@@ -118,6 +115,8 @@ namespace ReplayMod
             Paused = false;
             RpcsApplied = RpcErrors = 0;
             _thumbPending = true;
+            _envShownTime = -1f;
+            _envStepNext = 0f;
             Plugin.Log.LogInfo($"starting replay {path}: {Data.Events.Count} events, {Data.Duration:0.0} s, world '{Data.Header.WorldName}' seed '{Data.Header.SeedName}', {_zones.Count} recorded zones");
             ZNet.SetServer(server: true, openServer: false, publicServer: false, WorldName, "", world);
             ZNet.ResetServerHost();
@@ -148,9 +147,7 @@ namespace ReplayMod
             _catapults.Clear();
             _basket.Clear();
             Hidden.Clear();
-            HidePlayers = HideHeld = HideProjectiles = WindOverride = NoWindLines = DetailOverride = false;
-            if (_lodWas >= 0f) QualitySettings.lodBias = _lodWas;
-            _lodWas = -1f;
+            HidePlayers = HideHeld = HideProjectiles = WindOverride = NoWindLines = false;
             _hideApplied = default;
             FreeCam.Reset();
             _poseBones.Clear();
@@ -243,12 +240,8 @@ namespace ReplayMod
             }
             FreeCam.Init(pos, rot, fov);
             Paused = true; // start paused: look around first
-            // Draw small things (creatures) further out.
-            if (Plugin.ReplayLodBias.Value > 0f && _savedLodBias <= 0f)
-            {
-                _savedLodBias = QualitySettings.lodBias;
-                QualitySettings.lodBias = Mathf.Max(_savedLodBias, Plugin.ReplayLodBias.Value);
-            }
+            // Your level of detail, back when the replay ends; ApplyEnvironment sets the replay's.
+            if (_savedLodBias <= 0f) _savedLodBias = QualitySettings.lodBias;
             _settleFrames = SettleFrames;
             Ready = true;
             Plugin.Log.LogInfo($"replay ready: {_alive.Count} objects at t=0");
@@ -312,13 +305,23 @@ namespace ReplayMod
             CameraPath.UpdateVisuals();
             AudioListener.pause = Paused || Game.IsPaused();
             ApplyEnvironment();
-            // Paused, the sky doesn't step by itself: show changes from camera keys at once.
+            // Paused, the game's sky and light don't step at all, so a replay that opened paused kept the
+            // half-made sky of the loading screen. Step them here: at once for a change from camera keys or
+            // a far camera move, otherwise twice a second, with the reflection every 3 s as the game does.
             EnvMan envNow = EnvMan.instance;
-            if (Paused && envNow && (envNow.m_debugTime != _envShownTime || envNow.m_debugEnv != _envShownName))
+            Camera camNow = Utils.GetMainCamera();
+            if (Paused && envNow && camNow)
             {
-                _envShownTime = envNow.m_debugTime;
-                _envShownName = envNow.m_debugEnv;
-                EnvironmentChanged();
+                Vector3 at = camNow.transform.position;
+                bool changed = envNow.m_debugTime != _envShownTime || envNow.m_debugEnv != _envShownName || (at - _envShownAt).sqrMagnitude > 400f;
+                if (changed || Time.unscaledTime >= _envStepNext)
+                {
+                    _envShownTime = envNow.m_debugTime;
+                    _envShownName = envNow.m_debugEnv;
+                    _envShownAt = at;
+                    _envStepNext = Time.unscaledTime + 0.5f;
+                    EnvironmentChanged(changed || Time.unscaledTime - _reflectionLast > 3f);
+                }
             }
             RefreshReflection();
             ApplyVitals(p);
@@ -570,14 +573,14 @@ namespace ReplayMod
         }
 
         // Called by the menu when the time or weather override changes, so it shows at once even paused.
-        public static void EnvironmentChanged()
+        public static void EnvironmentChanged(bool reflect = true)
         {
             EnvMan env = EnvMan.instance;
             if (!env) return;
             ApplyEnvironment();
             env.ForceInstantEnvironmentSwitch();
             EnvFixedUpdate.Invoke(env, null);
-            _reflectionDue = true;
+            _reflectionDue |= reflect;
         }
 
         private static readonly MethodInfo EnvFixedUpdate = AccessTools.Method(typeof(EnvMan), "FixedUpdate");
@@ -587,7 +590,7 @@ namespace ReplayMod
         // at once, fully faded in; while a slider is dragged, at most 4 times a second.
         private static readonly AccessTools.FieldRef<ReflectionUpdate, float> ReflectionTimer = AccessTools.FieldRefAccess<ReflectionUpdate, float>("m_updateTimer");
         private static bool _reflectionDue;
-        private static float _reflectionNext;
+        private static float _reflectionNext, _reflectionLast = -10f;
 
         private static void RefreshReflection()
         {
@@ -595,6 +598,7 @@ namespace ReplayMod
             if (!_reflectionDue || !r || Time.unscaledTime < _reflectionNext) return;
             _reflectionDue = false;
             _reflectionNext = Time.unscaledTime + 0.25f;
+            _reflectionLast = Time.unscaledTime;
             r.UpdateReflection();
             ReflectionTimer(r) = Mathf.Min(r.m_transitionDuration, r.m_interval);
         }
@@ -977,15 +981,10 @@ namespace ReplayMod
             // Found in the main scene by path; looked for at most once a second while it's wanted off.
             if (NoWindLines && !_windLines && Time.frameCount % 60 == 0) _windLines = GameObject.Find("_Environment/FollowPlayer/GlobalWindParticles");
             if (_windLines && _windLines.activeSelf == NoWindLines) _windLines.SetActive(!NoWindLines);
-            if (DetailOverride)
+            if (_savedLodBias > 0f)
             {
-                if (_lodWas < 0f) _lodWas = QualitySettings.lodBias;
-                QualitySettings.lodBias = Detail;
-            }
-            else if (_lodWas >= 0f)
-            {
-                QualitySettings.lodBias = _lodWas;
-                _lodWas = -1f;
+                float lod = Plugin.ReplayLodBias.Value > 0f ? Plugin.ReplayLodBias.Value : _savedLodBias;
+                if (QualitySettings.lodBias != lod) QualitySettings.lodBias = lod;
             }
         }
 

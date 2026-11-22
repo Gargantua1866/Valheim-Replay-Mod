@@ -113,7 +113,7 @@ Type in the search box at the top to show only the sections that have what you'r
 [list]
 [*][b]Picture:[/b] changes brightness, exposure, temperature, saturation, contrast, bloom, lens dirt and sun shafts, and has depth of field, which in a replay is on only when this switch is on, whatever the game's graphics setting says.
 [*][b]Camera presets:[/b] eight slots that keep all of the settings above. Click a preset's name to rename it.
-[*][b]Time and weather:[/b] wind follows the recording unless "Set the wind" is on, which sets its direction and strength. "Hide the wind lines and the dust in the air" turns off those effects. "Set the level of detail" overrides the game's level of detail from 1 to 7 (the game's own setting goes up to 5), so far objects keep their full models further away.
+[*][b]Time and weather:[/b] wind follows the recording unless "Set the wind" is on, which sets its direction and strength. "Hide the wind lines and the dust in the air" turns off those effects. "Set the level of detail" overrides the game's level of detail from 1 to 7 (the game's own setting goes up to 5), so far objects keep their full models further away. It's on at 7 by default and kept for every replay ([b]ReplayLodBias[/b] in the config).
 [*][b]Hide from the shot:[/b] hides the aimed object (U), all players, what players hold, and projectiles. Projectiles that a mod draws its own way may not count.
 [*][b]Players:[/b] lists the recorded players. "Go to" puts the camera behind one, "Follow" follows them, and "Eyes" shows their view.
 [*][b]HUD:[/b] shows health bars and damage numbers without the rest of the HUD, or turns on the normal game HUD (same as Ctrl+F3).
@@ -131,13 +131,13 @@ Recordings mark deaths, kills, bosses (seen and defeated), teleports and your ow
 [size=5][b]Export[/b][/size]
 F10 renders the camera path, playhead to end, the section selected on the timeline, or the whole replay at a fixed 24, 30, 60, 120 or 144 fps, optionally at 2x or 3x the window size, so the video is smooth however slow your PC is. Sound is recorded in a second, real-time pass. A small box in the bottom-right corner shows the progress and the time left; it isn't in the video. At 2x or more the camera renders straight at the video size. With the game HUD on, Unity's larger capture is used instead, with the game's motion blur and antialiasing off for the export. Files go to [b]...\ReplayMod\exports[/b].
 
-Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Below it, the bitrate box shows the usual bitrate for the codec, size and frame rate; type another and press Enter. Choosing a codec puts it back to that codec's usual. Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an [b]Install FFmpeg[/b] button (WinGet), or you can set [b]FfmpegPath[/b] in the config.
+Export needs FFmpeg. The Export section picks the codec: H.264, H.265, AV1, or ProRes for video editors (a large .mov). Below it, the bitrate box (Kbps) shows the usual bitrate for the codec, size and frame rate; a number typed there applies as you type. Choosing a codec puts it back to that codec's usual. Auto uses H.264, or H.265 when the video is larger or faster than H.264 players handle (above 4K at 60 fps). Windows plays H.265 and AV1 with Microsoft's HEVC and AV1 Video Extensions; VLC plays them without. Replay Mod looks for FFmpeg in the usual places. If it isn't found, the Tab menu has an [b]Install FFmpeg[/b] button (WinGet), or you can set [b]FfmpegPath[/b] in the config.
 
 [size=5][b]Configuration[/b][/size]
 Settings are in [b]BepInEx\config\com.gargantua.replaymod.cfg[/b], or in the F1 menu if you have a configuration manager mod installed. The sections are:
 [list]
 [*][b]Recording:[/b] the record, mark and Replay Buffer keys, what gets recorded and at what rate.
-[*][b]Playback:[/b] replaying other mods' RPCs, local camera targets, LOD bias, lowest sound pitch and terrain load radius.
+[*][b]Playback:[/b] replaying other mods' RPCs, local camera targets, level of detail, lowest sound pitch and terrain load radius.
 [*][b]Export:[/b] frame rate, resolution, audio and FfmpegPath.
 [*][b]UI:[/b] the Tab menu's size, closed sections and camera presets.
 [/list]

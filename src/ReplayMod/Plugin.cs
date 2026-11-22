@@ -21,7 +21,7 @@ namespace ReplayMod
         internal static ConfigEntry<bool> ExportOpen;
         internal enum Codec { Auto, H264, H265, AV1, ProRes }
         internal static ConfigEntry<Codec> ExportCodec;
-        internal static ConfigEntry<float> ExportBitrate;
+        internal static ConfigEntry<int> ExportBitrate;
 
         internal static ConfigEntry<KeyboardShortcut> RecordKey, MarkKey;
         internal static ConfigEntry<float> SampleRate;
@@ -71,7 +71,7 @@ namespace ReplayMod
             ExtraRpcs = Config.Bind("Playback", "ExtraRpcs", "", "More recorded RPC names to replay, comma-separated, on top of the built-in visual-only list.");
             LocalTargets = Config.Bind("Playback", "LocalTargets", "Missile", "Component names, comma-separated, of objects that mods create on each machine without a network identity (missiles, for one). The camera can follow, mount on or orbit them in replays.");
             ReplayModRpcs = Config.Bind("Playback", "ReplayModRpcs", true, "Replay other mods' RPCs aimed at recorded objects (weapon fire, effects). Turn off if a mod misbehaves in replays.");
-            ReplayLodBias = Config.Bind("Playback", "ReplayLodBias", 7f, "LOD bias in replays, so creatures and small objects are drawn from further away. 0 = leave your setting alone.");
+            ReplayLodBias = Config.Bind("Playback", "ReplayLodBias", 7f, "Level of detail in replays, 1 to 7 (the game's own setting goes 1 to 5), so far objects keep their full models further away. 0 = your graphics setting.");
             MinSoundPitch = Config.Bind("Playback", "MinSoundPitch", 0.35f, "In slow motion, sounds slow down with the picture but never below this pitch (lower turns them into a rumble). 0.01 = always match the picture.");
             for (int i = 0; i < CameraPresets.Length; i++)
             {
@@ -84,7 +84,7 @@ namespace ReplayMod
             ExportFps = Config.Bind("Export", "FrameRate", 60, new ConfigDescription("Video frame rate.", new AcceptableValueList<int>(24, 30, 60, 120, 144)));
             ExportScale = Config.Bind("Export", "ResolutionScale", 1, new ConfigDescription("Video size as a multiple of the game window (2 = supersampled).", new AcceptableValueRange<int>(1, 4)));
             ExportCodec = Config.Bind("Export", "Codec", Codec.Auto, "Video codec, from FFmpeg. Auto = H.264, or H.265 when the video is too large or fast for H.264 players (above 4K at 60 fps). ProRes is for video editors and makes very large .mov files.");
-            ExportBitrate = Config.Bind("Export", "BitrateMbps", 0f, "Video bitrate in Mbps. 0 = the usual for the codec, size and frame rate. ProRes sets its own.");
+            ExportBitrate = Config.Bind("Export", "BitrateKbps", 0, "Video bitrate in Kbps. 0 = the usual for the codec, size and frame rate. ProRes sets its own.");
             ExportAudio = Config.Bind("Export", "Audio", true, "After the video, play the range again in real time to record its sound and merge it into the MP4.");
             FfmpegPath = Config.Bind("Export", "FfmpegPath", "", "ffmpeg.exe, which export needs. Empty = look in WinGet's folder and on PATH.");
             ScreenshotScale = Config.Bind("Export", "ScreenshotScale", 1, new ConfigDescription("Screenshot size as a multiple of the game window.", new AcceptableValueRange<int>(1, 4)));

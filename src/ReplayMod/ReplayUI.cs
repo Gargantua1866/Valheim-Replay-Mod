@@ -737,13 +737,20 @@ namespace ReplayMod
         // GUILayout controls whose text shows the search words highlighted.
         private static class Ui
         {
-            public static void Label(string text, params GUILayoutOption[] o) => GUILayout.Label(Highlight(text, _search), o);
-            public static void Label(string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Label(Highlight(text, _search), style, o);
-            public static bool Button(string text, params GUILayoutOption[] o) => GUILayout.Button(Highlight(text, _search), o);
-            public static bool Button(string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Button(Highlight(text, _search), style, o);
-            public static bool Toggle(bool on, string text, params GUILayoutOption[] o) => GUILayout.Toggle(on, Highlight(text, _search), o);
-            public static bool Toggle(bool on, string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Toggle(on, Highlight(text, _search), style, o);
-            public static bool RepeatButton(string text, params GUILayoutOption[] o) => GUILayout.RepeatButton(Highlight(text, _search), o);
+            public static void Label(string text, params GUILayoutOption[] o) => GUILayout.Label(Shown(text), o);
+            public static void Label(string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Label(Shown(text), style, o);
+            public static bool Button(string text, params GUILayoutOption[] o) => GUILayout.Button(Shown(text), o);
+            public static bool Button(string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Button(Shown(text), style, o);
+            public static bool Toggle(bool on, string text, params GUILayoutOption[] o) => GUILayout.Toggle(on, Shown(text), o);
+            public static bool Toggle(bool on, string text, GUIStyle style, params GUILayoutOption[] o) => GUILayout.Toggle(on, Shown(text), style, o);
+            public static bool RepeatButton(string text, params GUILayoutOption[] o) => GUILayout.RepeatButton(Shown(text), o);
+
+            // Collects the text for the search, in the layout pass, then highlights the search words.
+            private static string Shown(string text)
+            {
+                if (_collecting != null && Event.current.type == EventType.Layout) _collecting.Append(' ').Append(text);
+                return Highlight(text, _search);
+            }
         }
 
         // Colors each searched word in the text, leaving rich text tags as they are.
@@ -827,26 +834,60 @@ namespace ReplayMod
             Ui.Label($"World '{ReplaySession.Data.Header.WorldName}', recorded by {ReplaySession.Data.Header.PlayerName}");
 
             _searchHit = false;
-            if (Fold("Playback", "play pause restart seek frame step speed slow motion")) PlaybackSection();
-            if (Fold("Camera path", "key keys keyframe add delete copy paste undo redo clear previous next take record follow show line colour color ease speed time of day weather match original fov roll select move attach anchor rides")) PathSection();
-            if (Fold("Camera target", "follow mount orbit detach look at aim attach softness lag projectile arrow bolt spear bomb spell meteor")) TargetSection();
-            if (Fold("Camera controls", "original fov zoom roll pan move speed smoothing aim sensitivity yaw pitch invert lock height axis")) ControlsSection();
-            if (Fold("Framing", "guide grid thirds golden center safe wide vertical horizon")) FramingSection();
-            if (Fold("Picture", "exposure brightness temperature colour color saturation contrast bloom lens dirt sun shafts look grading revert depth of field dof focus blur aperture")) PictureSection();
-            if (Fold("Camera presets", "preset save load")) PresetsSection();
-            if (Fold("Players", "player go to follow eyes first person pov")) PlayersSection();
-            if (Fold("Hide from the shot", "hide hidden show object players held items weapons projectiles arrows")) HideSection();
-            if (Fold("Time and weather", "time of day clock sun night weather rain wind environment")) EnvironmentSection();
-            if (Fold("HUD and characters", "hud health bars damage numbers timeline status pose 50 hz motion")) HudSection();
-            if (Fold("Trim", "cut clip shorter trim start end save")) TrimSection();
-            if (Fold("Export", "video mp4 ffmpeg render frame rate fps size resolution sound audio screenshot folder explorer flash light brightness exposure")) ExportSection();
-            if (Fold("Info", "objects rpc exit leave quit save without saving")) InfoSection();
+            foreach (var s in Sections)
+            {
+                if (!Fold(s.title, s.keywords)) continue;
+                _collecting = ev.type == EventType.Layout ? Collector(s.title) : null;
+                s.draw();
+                _collecting = null;
+            }
             if (_search.Length > 0 && !_searchHit) Ui.Label("Nothing matches.");
+            // A section that hasn't been open yet is drawn once out of sight, one per frame, so the search knows
+            // its words too. Chosen in the layout pass, so every event of this frame draws the same one.
+            if (ev.type == EventType.Layout) _harvest = System.Array.FindIndex(Sections, s => !_sectionText.ContainsKey(s.title));
+            if (_harvest >= 0)
+            {
+                var s = Sections[_harvest];
+                GUILayout.BeginArea(new Rect(-20000f, 0f, _panelW, 4000f));
+                _collecting = ev.type == EventType.Layout ? Collector(s.title) : null;
+                s.draw();
+                _collecting = null;
+                GUILayout.EndArea();
+            }
 
             GUILayout.EndScrollView();
             GUI.Label(new Rect(_panelW - Grip, _panelH - Grip, Grip, Grip), "<b>//</b>", _label);
             if (ev.type == EventType.KeyDown && (ev.keyCode == KeyCode.Return || ev.keyCode == KeyCode.KeypadEnter)) GUIUtility.keyboardControl = 0;
             GUI.DragWindow();
+        }
+
+        // The menu's sections: title, extra search words, and what's in them.
+        private static readonly (string title, string keywords, System.Action draw)[] Sections =
+        {
+            ("Playback", "play pause restart seek frame step speed slow motion", PlaybackSection),
+            ("Camera path", "key keys keyframe add delete copy paste undo redo clear previous next take record follow show line colour color ease speed time of day weather match original fov roll select move attach anchor rides", PathSection),
+            ("Camera target", "follow mount orbit detach look at aim attach softness lag projectile arrow bolt spear bomb spell meteor missile", TargetSection),
+            ("Camera controls", "original fov zoom roll pan move speed smoothing aim sensitivity yaw pitch invert lock height axis", ControlsSection),
+            ("Framing", "guide grid thirds golden center safe wide vertical horizon", FramingSection),
+            ("Picture", "exposure brightness temperature colour color saturation contrast bloom lens dirt sun shafts look grading revert depth of field dof focus blur aperture", PictureSection),
+            ("Camera presets", "preset save load rename name", PresetsSection),
+            ("Players", "player go to follow eyes first person pov", PlayersSection),
+            ("Hide from the shot", "hide hidden show object players held items weapons projectiles arrows", HideSection),
+            ("Time and weather", "time of day clock sun night weather rain wind environment lines dust particles lod level of detail far distance", EnvironmentSection),
+            ("HUD and characters", "hud health bars damage numbers timeline status pose 50 hz motion", HudSection),
+            ("Trim", "cut clip shorter trim start end save", TrimSection),
+            ("Export", "video mp4 mov ffmpeg render frame rate fps size resolution sound audio screenshot folder explorer flash light brightness exposure codec h264 h265 hevc av1 prores bitrate kbps", ExportSection),
+            ("Info", "objects rpc exit leave quit save without saving", InfoSection),
+        };
+        // The text of each section's controls, from when it was last drawn.
+        private static readonly Dictionary<string, System.Text.StringBuilder> _sectionText = new Dictionary<string, System.Text.StringBuilder>();
+        private static System.Text.StringBuilder _collecting;
+        private static int _harvest = -1;
+
+        private static System.Text.StringBuilder Collector(string title)
+        {
+            if (!_sectionText.TryGetValue(title, out var sb)) _sectionText[title] = sb = new System.Text.StringBuilder();
+            return sb.Clear();
         }
 
         private static HashSet<string> _closed;
@@ -870,7 +911,7 @@ namespace ReplayMod
         {
             if (_search.Length > 0)
             {
-                if (!SearchMatches(title + " " + keywords)) return false;
+                if (!SearchMatches(title + " " + keywords + (_sectionText.TryGetValue(title, out var text) ? text.ToString() : ""))) return false;
                 _searchHit = true;
                 GUILayout.Space(4);
                 Ui.Label($"<b>{title}</b>", _label);
@@ -1349,9 +1390,14 @@ namespace ReplayMod
                 ReplaySession.WindStrength = Slider("Strength", ReplaySession.WindStrength, 0f, 1f, "0.00", 0.5f);
             }
             ReplaySession.NoWindLines = Ui.Toggle(ReplaySession.NoWindLines, "Hide the wind lines and the dust in the air");
-            ReplaySession.DetailOverride = Ui.Toggle(ReplaySession.DetailOverride, "Set the level of detail (far objects)");
-            if (ReplaySession.DetailOverride)
-                ReplaySession.Detail = Mathf.Round(Slider("Level of detail", ReplaySession.Detail, 1f, 7f, "0", 5f));
+            // Kept in the config, so it holds for every replay.
+            bool lodOn = Plugin.ReplayLodBias.Value > 0f;
+            if (Ui.Toggle(lodOn, "Set the level of detail (far objects)") != lodOn) Plugin.ReplayLodBias.Value = lodOn ? 0f : 7f;
+            if (Plugin.ReplayLodBias.Value > 0f)
+            {
+                float lod = Mathf.Round(Slider("Level of detail", Mathf.Clamp(Plugin.ReplayLodBias.Value, 1f, 7f), 1f, 7f, "0", 7f));
+                if (lod != Plugin.ReplayLodBias.Value) Plugin.ReplayLodBias.Value = lod;
+            }
             ReplaySession.FollowRecordedTime = Ui.Toggle(ReplaySession.FollowRecordedTime, "Time of day follows the recording");
             if (!ReplaySession.FollowRecordedTime)
             {
@@ -1382,6 +1428,9 @@ namespace ReplayMod
             ReplaySession.UsePose = Ui.Toggle(ReplaySession.UsePose, $"Exact pose for the recording player and their vehicle ({ReplaySession.Data.Poses.Count} + {ReplaySession.Data.Parts.Count} tracks)");
             ReplaySession.UseHiFi = Ui.Toggle(ReplaySession.UseHiFi, $"High-rate motion (H) ({ReplaySession.Data.HiFi.Count} tracks)");
         }
+
+        private static string _bitrateText = "";
+        private static int _bitrateShown = -1;
 
         private static void ExportSection()
         {
@@ -1422,16 +1471,33 @@ namespace ReplayMod
                 if (Ui.Toggle(Plugin.ExportCodec.Value == c, label, GUI.skin.button) && Plugin.ExportCodec.Value != c)
                 {
                     Plugin.ExportCodec.Value = c;
-                    Plugin.ExportBitrate.Value = 0f;
+                    Plugin.ExportBitrate.Value = 0;
                 }
             }
             GUILayout.EndHorizontal();
             if (Plugin.ExportCodec.Value == Plugin.Codec.ProRes) Ui.Label("Bitrate: set by ProRes 422 HQ");
             else
             {
+                // Applied as typed; the box shows the usual again when a codec is chosen.
                 GUILayout.BeginHorizontal();
-                NumberField("Bitrate (Mbps):", Exporter.MenuMbps(), v => Plugin.ExportBitrate.Value = Mathf.Clamp(v, 1f, 2000f));
-                Ui.Label(Plugin.ExportBitrate.Value > 0f ? "typed, Enter applies" : "usual for this codec and size, Enter applies");
+                Ui.Label("Bitrate (Kbps):", GUILayout.ExpandWidth(false));
+                int kbps = Exporter.MenuKbps();
+                if (kbps != _bitrateShown)
+                {
+                    _bitrateShown = kbps;
+                    _bitrateText = kbps.ToString();
+                }
+                string typedRate = GUILayout.TextField(_bitrateText, 7, GUILayout.Width(80));
+                if (typedRate != _bitrateText)
+                {
+                    _bitrateText = typedRate;
+                    if (int.TryParse(typedRate, out int v) && v >= 100)
+                    {
+                        Plugin.ExportBitrate.Value = v;
+                        _bitrateShown = Exporter.MenuKbps();
+                    }
+                }
+                Ui.Label(Plugin.ExportBitrate.Value > 0 ? "typed" : "usual for this codec and size");
                 GUILayout.EndHorizontal();
             }
             Plugin.ExportAudio.Value = Ui.Toggle(Plugin.ExportAudio.Value, "Sound (plays the range again in real time afterwards)");

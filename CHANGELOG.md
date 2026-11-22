@@ -9,10 +9,12 @@
 - A small box in the corner shows the export's progress, the time left and that F10 cancels. It isn't in the video.
 - Clicking a camera key to select it no longer nudges it: a key moves only after a short drag, and keeps the spot where it was grabbed.
 - Dragging along the row the keys sit in selects every key in that stretch. Shift adds them to the selection.
-- The Export section picks the video codec: H.264, H.265, AV1 or ProRes (a .mov for video editors), all from the FFmpeg export already uses. A bitrate box below it starts at the usual bitrate for the codec, size and frame rate, and choosing a codec puts it back to that codec's usual. Auto, the default, uses H.264, or H.265 for videos larger or faster than H.264 players handle. 6K videos, and 4K above 60 fps, came out as H.264 that Windows and most players showed as corrupted.
+- The Export section picks the video codec: H.264, H.265, AV1 or ProRes (a .mov for video editors), all from the FFmpeg export already uses. A bitrate box (Kbps) below it starts at the usual bitrate for the codec, size and frame rate, and choosing a codec puts it back to that codec's usual. Auto, the default, uses H.264, or H.265 for videos larger or faster than H.264 players handle. 6K videos, and 4K above 60 fps, came out as H.264 that Windows and most players showed as corrupted.
 - Screenshots at 2x or more render the camera straight at that size, so FarLands' distant objects are in them.
 - *Hide the wind lines and the dust in the air* in Time and weather turns off the game's wind streaks and drifting specks.
-- *Set the level of detail* overrides the game's level of detail from 1 to 7 during the replay, so far objects keep their full models further away. The game's own setting goes up to 5.
+- *Set the level of detail* in Time and weather sets the replay's level of detail from 1 to 7, so far objects keep their full models further away. The game's own setting goes up to 5. It's the `ReplayLodBias` setting, on at 7 by default and kept for every replay, and now also applies when it's lower than your graphics setting.
+- A replay that opens paused no longer shows a wrong sky and light until it's played: paused, the sky, light and reflections now keep updating.
+- The Tab menu's search finds every setting by the words on it, including ones in sections that are closed.
 - The camera path's speed labels say that the whole path speed multiplies each key's speed, and what a key plays at.
 - Changing the time of day or weather while paused shows its light on water and shiny surfaces at once. The game refreshes that reflection only as game time passes, so it waited for the replay to play.
 - Depth of field moved to the Picture section; Framing and focus is now Framing.

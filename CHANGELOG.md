@@ -14,6 +14,7 @@
 - *Hide the wind lines and the dust in the air* in Time and weather turns off the game's wind streaks and drifting specks.
 - *Set the level of detail* overrides the game's level of detail from 1 to 7 during the replay, so far objects keep their full models further away. The game's own setting goes up to 5.
 - The camera path's speed labels say that the whole path speed multiplies each key's speed, and what a key plays at.
+- Changing the time of day or weather while paused shows its light on water and shiny surfaces at once. The game refreshes that reflection only as game time passes, so it waited for the replay to play.
 - A camera path between two keys close together no longer swings out in a long loop when the keys around them are far away.
 
 ## 0.1.3

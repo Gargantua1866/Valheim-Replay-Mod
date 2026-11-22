@@ -320,6 +320,7 @@ namespace ReplayMod
                 _envShownName = envNow.m_debugEnv;
                 EnvironmentChanged();
             }
+            RefreshReflection();
             ApplyVitals(p);
             ReplayHud.Update(p);
             UpdateLoading(p.transform.position);
@@ -576,9 +577,27 @@ namespace ReplayMod
             ApplyEnvironment();
             env.ForceInstantEnvironmentSwitch();
             EnvFixedUpdate.Invoke(env, null);
+            _reflectionDue = true;
         }
 
         private static readonly MethodInfo EnvFixedUpdate = AccessTools.Method(typeof(EnvMan), "FixedUpdate");
+
+        // The game renders the sky's reflection every 3 s of game time and fades it in over 3 s, so paused (or in
+        // slow motion) a new time of day or weather left the old light on water and shiny surfaces. Render it
+        // at once, fully faded in; while a slider is dragged, at most 4 times a second.
+        private static readonly AccessTools.FieldRef<ReflectionUpdate, float> ReflectionTimer = AccessTools.FieldRefAccess<ReflectionUpdate, float>("m_updateTimer");
+        private static bool _reflectionDue;
+        private static float _reflectionNext;
+
+        private static void RefreshReflection()
+        {
+            ReflectionUpdate r = ReflectionUpdate.instance;
+            if (!_reflectionDue || !r || Time.unscaledTime < _reflectionNext) return;
+            _reflectionDue = false;
+            _reflectionNext = Time.unscaledTime + 0.25f;
+            r.UpdateReflection();
+            ReflectionTimer(r) = Mathf.Min(r.m_transitionDuration, r.m_interval);
+        }
 
         // Paused, particles don't step, so a flame left in the world stays where its object was before
         // the seek and jumps on unpausing. Once objects have their new pose, looping world-space effects
